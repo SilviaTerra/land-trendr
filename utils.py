@@ -62,9 +62,54 @@ def ds2array(ds, band=1):
     return the array of values
     """
     num_pix_wide, num_pix_high = ds.RasterXSize, ds.RasterYSize
+    if band > ds.RasterCount:
+        raise Exception('Band %s requested but raster only has %s bands' % (
+            band, ds.RasterCount
+        ))
     return ds.GetRasterBand(band).ReadAsArray(0, 0, num_pix_wide, num_pix_high)
 
-def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=-99, out_fn='/tmp/rast_algebra.tif'):
+def array2raster(array, template_rast_fn, out_fn=None, no_data_val=None, data_type=None):
+    """
+    Given a 2-dimensional numpy array and a template raster,
+    write the array out to a georeferenced raster in the same style as the template.
+
+    For the no_data_val and data_type, if no value is specified it falls back
+    to whatever those settings are in the template
+    """
+    if not out_fn:
+        out_fn = os.path.join('/tmp', 'output_%s' % os.path.basename(template_rast_fn))
+
+    template_ds = gdal.Open(template_rast_fn)
+    ds_shape = (template_ds.RasterYSize, template_ds.RasterXSize)
+    if array.shape != ds_shape:
+        raise Exception(
+            'Dimensions of array %s and template raster %s don\'t match' % (
+                array.shape, ds_shape
+            )
+        )
+    if not data_type:
+        data_type = template_ds.GetRasterBand(1).DataType
+
+    driver = template_ds.GetDriver()
+    out_ds = driver.Create(
+        out_fn, template_ds.RasterXSize, template_ds.RasterYSize, 1, data_type
+    )
+    out_band = out_ds.GetRasterBand(1)
+
+    if no_data_val:
+        no_data_val = template_ds.GetRasterBand(1).GetNoDataValue()
+    if no_data_val:
+        out_band.SetNoDataValue(no_data_val)
+    
+    out_band.WriteArray(array, 0, 0)
+    
+    #georeference image
+    out_ds.SetGeoTransform(template_ds.GetGeoTransform())
+    out_ds.SetProjection(template_ds.GetProjection())
+
+    return out_fn
+
+def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/rast_algebra.tif'):
     """
     Given a raster file, 
     a string equation in the format: TODO,
@@ -75,31 +120,36 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=-99, out_fn='/tmp/rast
     gdal.UseExceptions() #enable exception-throwing by GDAL
     
     ds = gdal.Open(rast_fn)
-    num_bands = ds.RasterCount
+    if not no_data_val:
+        no_data_val = ds.GetRasterBand(1).GetNoDataValue()
+
+    eqn_bands = parse_eqn_bands(eqn)
+    mask_bands = parse_eqn_bands(mask_eqn or '')
+    all_bands = eqn_bands.union(mask_bands)
+
+    min_band, max_band = min(all_bands), max(all_bands)
+    if max_band > ds.RasterCount:
+        raise Exception('Band %s not present in %s' % (max_band, rast_fn))
+    if min_band <= 0:
+        raise Exception('Invalid band "%s" - bands must be >= 1')
 
     eqn = '(B3-B2)/(B3+B2)'
 
-
-    bands = [1,2,3]
-    band_dict = dict([(b_num, ds2array(ds, b_num)) for b_num in bands])
+    band_dict = dict([(b_num, ds2array(ds, b_num)) for b_num in all_bands])
     
-    eqn = eqn #TODO modify
+
+    mod_eqn, mod_mask_eqn = eqn, mask_eqn or ''
+    if band_dict:
+        for e in [mod_eqn, mod_mask_eqn]:
+            for b in all_bands:
+                e = e.replace('B%s' % b, 'band_dict[%s]' % b)
+
     if mask_eqn:
-        #TODO modify mask_eqn to replace B3 with band_dict[3]
-        mask = eval(mask_eqn)
-
-    if mask:
-        data = numpy.choose(mask, (no_data_val, eval(eqn)))
+        data = eval(
+            'numpy.choose(%s, (no_data_val, %s)))' % (mod_mask_eqn, mod_eqn)
+        )
     else:
-        data = eval(eqn)
-
-
-#data2 = band2.ReadAsArray(0, 0, cols, rows).astype(Numeric.Float16)
-#data3 = band3.ReadAsArray(0, 0, cols, rows).astype(Numeric.Float16)
-#mask = numpy.greater(data3 + data2, 0)
-#ndvi = numpy.choose(mask, (-99, (data3 - data2) / (data3 + data2)))
-
-
+        data = eval(mod_eqn)
 
 def serialize_rast(rast_fn, extra_data={}):
     """

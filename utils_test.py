@@ -4,6 +4,7 @@ import shutil
 import unittest
 
 from nose.tools import raises
+from osgeo import gdal
 
 import utils
 
@@ -50,6 +51,23 @@ class ParseEqnTestCase(unittest.TestCase):
             set([2,3,4,6]), 
             set(utils.parse_eqn_bands('(B2-B2)/(B3+B4)-B6'))
         )
+
+class RastUtilsTestCase(unittest.TestCase):
+    def rast2array2rast(self):
+        template_fn = 'test_files/dummy_single_band.tif'
+        ds = gdal.Open(template_fn)
+        array = utils.ds2array(ds)
+        self.assertEquals(array.shape, (45, 54))
+        rast_fn = utils.array2raster(array, template_fn)
+        self.assertEqual(rast_fn, '/tmp/dummy_single_band.tif')
+        os.remove(rast_fn)
+
+    @raises(Exception)
+    def array2raster_invalid_dim(self):
+        template_fn = 'test_files/dummy_single_band.tif'
+        ds = gdal.Open(template_fn)
+        array = utils.ds2array(ds)
+        utils.array2raster(array.transpose(), template_fn)
 
 class SerializeRastTestCase(unittest.TestCase):
     
