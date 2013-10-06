@@ -1,7 +1,9 @@
-from nose.tools import raises
+from datetime import datetime
 import os
 import shutil
 import unittest
+
+from nose.tools import raises
 
 import utils
 
@@ -27,13 +29,35 @@ class UtilsDecompressTestCase(unittest.TestCase):
         self.assertEquals(files, [os.path.join(test_dir, 'dummy.csv')])
         shutil.rmtree(test_dir)
 
-class Rast2TextTestCase(unittest.TestCase):
-    
+class DateTestCase(unittest.TestCase):
     @raises(ValueError)
     def test_invalid_date(self):
-        utils.rast2text('test_files/dummy.csv', '200-01-13').next()
+        utils.parse_date('200-01-13')
+
+    def test_valid_date(self):
+        self.assertEquals(utils.parse_date('2012-01-13'), datetime(2012,1,13))
+
+class SerializeRastTestCase(unittest.TestCase):
 
     @raises(RuntimeError)
     def test_invalid_type(self):
-        utils.rast2text('test_files/dummy.csv', '2012-01-13').next()
+        utils.serialize_rast('test_files/dummy.csv').next()
     
+    def test_no_extra_data(self):
+        self.assertEquals(
+            utils.serialize_rast('test_files/dummy_single_band.tif').next(),
+            (
+                'POINT(-2097378.06273 2642045.53514)',
+                {'val': 16000.0}
+            )
+        )
+
+    def test_extra_data(self):
+        extra = {'date': "2013-01-30"}
+        self.assertEquals(
+            utils.serialize_rast('test_files/dummy_single_band.tif', extra).next(),
+            (
+                'POINT(-2097378.06273 2642045.53514)',
+                {'date': '2013-01-30', 'val': 16000.0}
+            )
+        )
