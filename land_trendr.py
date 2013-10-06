@@ -15,7 +15,7 @@ EMR_DEFAULT_OPTIONS = {
     'no_output': True,
     'bootstrap_cmds': [
         'sudo apt-get -y install gdal-bin python-gdal python-pip',
-        'sudo pip install boto'
+        'sudo pip install boto numpy'
     ],
     'python_archive': [DEPENDENCIES_TARFILE]
 }
