@@ -33,8 +33,28 @@ def decompress(filename, out_dir='/tmp/decompressed'):
     return [os.path.join(out_dir, fn) for fn in os.listdir(out_dir)]
 
 from datetime import datetime
+
+def parse_date(date_string):
+    """
+    Given a date string in the format YYYY-MM-DD, return a date
+    Raise an error if invalid format
+    """
+    try:
+        return datetime.strptime(date_string, '%Y-%m-%d')
+    except Exception:
+        raise ValueError('date_string must be in "YYYY-MM-DD" format')
+
+import re
+def parse_eqn_bands(eqn):
+    """
+    Given a string equation like:
+        '(B3-B2)/(B3+B2)'
+    Return the numbers for the bands (e.g. [2,3])
+    """
+    return [int(d) for d in set(re.compile('B(?P<band_num>\d+)').findall(eqn))]
+
+import numpy
 from osgeo import gdal
-import simplejson
 
 def ds2array(ds, band=1):
     """
@@ -44,7 +64,7 @@ def ds2array(ds, band=1):
     num_pix_wide, num_pix_high = ds.RasterXSize, ds.RasterYSize
     return ds.GetRasterBand(band).ReadAsArray(0, 0, num_pix_wide, num_pix_high)
 
-def rast_algebra(rast_fn, eqn, out_fn='/tmp/rast_algebra.tif'):
+def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=-99, out_fn='/tmp/rast_algebra.tif'):
     """
     Given a raster file, 
     a string equation in the format: TODO,
@@ -63,21 +83,23 @@ def rast_algebra(rast_fn, eqn, out_fn='/tmp/rast_algebra.tif'):
     bands = [1,2,3]
     band_dict = dict([(b_num, ds2array(ds, b_num)) for b_num in bands])
     
+    eqn = eqn #TODO modify
+    if mask_eqn:
+        #TODO modify mask_eqn to replace B3 with band_dict[3]
+        mask = eval(mask_eqn)
+
+    if mask:
+        data = numpy.choose(mask, (no_data_val, eval(eqn)))
+    else:
+        data = eval(eqn)
+
 
 #data2 = band2.ReadAsArray(0, 0, cols, rows).astype(Numeric.Float16)
 #data3 = band3.ReadAsArray(0, 0, cols, rows).astype(Numeric.Float16)
-#mask = Numeric.greater(data3 + data2, 0)
-#ndvi = Numeric.choose(mask, (-99, (data3 - data2) / (data3 + data2)))
+#mask = numpy.greater(data3 + data2, 0)
+#ndvi = numpy.choose(mask, (-99, (data3 - data2) / (data3 + data2)))
 
-def parse_date(date_string):
-    """
-    Given a date string in the format YYYY-MM-DD, return a date
-    Raise an error if invalid format
-    """
-    try:
-        return datetime.strptime(date_string, '%Y-%m-%d')
-    except Exception:
-        raise ValueError('date_string must be in "YYYY-MM-DD" format')
+
 
 def serialize_rast(rast_fn, extra_data={}):
     """

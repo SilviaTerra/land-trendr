@@ -30,6 +30,7 @@ class UtilsDecompressTestCase(unittest.TestCase):
         shutil.rmtree(test_dir)
 
 class DateTestCase(unittest.TestCase):
+    
     @raises(ValueError)
     def test_invalid_date(self):
         utils.parse_date('200-01-13')
@@ -37,8 +38,21 @@ class DateTestCase(unittest.TestCase):
     def test_valid_date(self):
         self.assertEquals(utils.parse_date('2012-01-13'), datetime(2012,1,13))
 
-class SerializeRastTestCase(unittest.TestCase):
+class ParseEqnTestCase(unittest.TestCase):
 
+    def test_no_match(self):
+        self.assertEquals([], utils.parse_eqn_bands(''))
+        self.assertEquals([], utils.parse_eqn_bands('12 - 4'))
+
+    def test_match(self):
+        self.assertEquals([1], utils.parse_eqn_bands('B1'))
+        self.assertEquals(
+            set([2,3,4,6]), 
+            set(utils.parse_eqn_bands('(B2-B2)/(B3+B4)-B6'))
+        )
+
+class SerializeRastTestCase(unittest.TestCase):
+    
     @raises(RuntimeError)
     def test_invalid_type(self):
         utils.serialize_rast('test_files/dummy.csv').next()
