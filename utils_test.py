@@ -5,7 +5,7 @@ import unittest
 
 import utils
 
-class UtilsTestCase(unittest.TestCase):
+class UtilsDecompressTestCase(unittest.TestCase):
     
     @raises(Exception)
     def test_decompress_existing_dir(self):
@@ -27,3 +27,8 @@ class UtilsTestCase(unittest.TestCase):
         self.assertEquals(files, [os.path.join(test_dir, 'dummy.csv')])
         shutil.rmtree(test_dir)
 
+class Rast2CSVTestCase(unittest.TestCase):
+    
+    @raises(RuntimeError)
+    def test_invalid_type(self):
+        utils.rast2csv('test_files/dummy.csv')

@@ -32,5 +32,9 @@ def decompress(filename, out_dir='/tmp/decompressed'):
     
     return [os.path.join(out_dir, fn) for fn in os.listdir(out_dir)]
 
-def rast2csv():
-    pass
+import gdal
+
+def rast2csv(rast_fn):
+    gdal.UseExceptions() #enable exception-throwing by GDAL
+    ds = gdal.Open(rast_fn)
+
