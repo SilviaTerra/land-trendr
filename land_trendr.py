@@ -13,7 +13,10 @@ DEPENDENCIES = []
 EMR_DEFAULT_OPTIONS = {
     'enable_emr_debugging': True,
     'no_output': True,
-    'bootstrap_cmds': ['sudo apt-get -y install gdal-bin python-gdal'],
+    'bootstrap_cmds': [
+        'sudo apt-get -y install gdal-bin python-gdal python-pip',
+        'sudo pip install boto'
+    ],
     'python_archive': [DEPENDENCIES_TARFILE]
 }
 
