@@ -1,5 +1,9 @@
 *.py[cod]
 
+# Unsaved files
+*~
+*.swp
+
 # C extensions
 *.so
 
