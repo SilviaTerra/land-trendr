@@ -27,8 +27,13 @@ class UtilsDecompressTestCase(unittest.TestCase):
         self.assertEquals(files, [os.path.join(test_dir, 'dummy.csv')])
         shutil.rmtree(test_dir)
 
-class Rast2CSVTestCase(unittest.TestCase):
+class Rast2TextTestCase(unittest.TestCase):
     
+    @raises(ValueError)
+    def test_invalid_date(self):
+        utils.rast2text('test_files/dummy.csv', '200-01-13').next()
+
     @raises(RuntimeError)
     def test_invalid_type(self):
-        utils.rast2csv('test_files/dummy.csv')
+        utils.rast2text('test_files/dummy.csv', '2012-01-13').next()
+    

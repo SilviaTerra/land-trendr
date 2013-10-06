@@ -32,9 +32,36 @@ def decompress(filename, out_dir='/tmp/decompressed'):
     
     return [os.path.join(out_dir, fn) for fn in os.listdir(out_dir)]
 
-import gdal
+from datetime import datetime
+from osgeo import gdal
+import simplejson
 
-def rast2csv(rast_fn):
+def rast2text(rast_fn, date_string):
+    """
+    Given a georeferenced raster filename, 
+    returns an iterator that generates lines in the format:
+        "<pt_wkt>", "{'date': '<YYYY-MM-DD>', 'val':<val>}"
+    """
     gdal.UseExceptions() #enable exception-throwing by GDAL
+    
+    try:
+        datetime.strptime(date_string, '%Y-%m-%d')
+    except Exception:
+        raise Exception('date_string must be in "YYYY-MM-DD" format')
+
     ds = gdal.Open(rast_fn)
+    num_pix_wide, num_pix_high = ds.RasterXSize, ds.RasterYSize
+    top_left_x, pix_width, x_rot, top_left_y, y_rot, pix_height = ds.GetGeoTransform()
+    
+    band = ds.GetRasterBand(1)
+    pixvals = band.ReadAsArray(0, 0, num_pix_wide, num_pix_high)
+    
+    for xoff in xrange(num_pix_wide):
+        x = top_left_x + (xoff + 0.5) * pix_width # +0.5 to get center x
+        for yoff in xrange(num_pix_high):
+            y = top_left_y + (yoff + 0.5) * pix_height # +0.5 to get center y
+            val = pixvals[yoff, xoff] #careful!  math matrix uses yoff, xoff
+            pt_wkt = 'POINT(%s %s)' % (x, y)
+            pt_data = simplejson.dumps({'date': date_string, 'val': val})
+            yield pt_wkt, pt_data
 
