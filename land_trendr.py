@@ -1,5 +1,8 @@
 import argparse
+import boto
+import datetime
 import os
+import re
 import tarfile
 
 from mr_land_trendr_job import MRLandTrendrJob
@@ -14,6 +17,10 @@ EMR_DEFAULT_OPTIONS = {
     'python_archive': [DEPENDENCIES_TARFILE]
 }
 
+S3_REGEX = re.compile('s3://([\w\-]+)/([\w\-\./]+)')
+INPUT_FILE = 'input.txt'
+LOCAL_INPUT_FILE = '/tmp/%s' % INPUT_FILE
+
 def bundle_dependencies():
     tar = tarfile.open(DEPENDENCIES_TARFILE, 'w:gz')
 
@@ -22,9 +29,30 @@ def bundle_dependencies():
 
     tar.close()
 
-def main(platform, input, output=None):
+def create_input_file(platform, input_bucket, input_path):
+    connection = boto.connect_s3()
+    bucket = connection.get_bucket(input_bucket)
+
+    contents = '\n'.join(['%s\t%s' % (bucket.name, key.key) for key in bucket.list(prefix=input_path) if key.key.endswith('.zip') or key.key.endswith('.tar.gz')])
+
+    if platform == 'local':
+        o = open(LOCAL_INPUT_FILE, 'w')
+        o.write(contents)
+        o.close()
+
+        return LOCAL_INPUT_FILE
+
+    if platform == 'emr':
+        input_key = '%s/%s' % (input_path, INPUT_FILE)
+    
+        key = bucket.new_key(input_key)
+        key.set_contents_from_string(contents)
+    
+        return 's3://%s/%s' % (input_bucket, input_key)
+
+def main(platform, input_bucket, input_path, output=None):
     args, runner_kwargs = [], {}
-    runner_kwargs['input_paths'] = [input]
+    runner_kwargs['input_paths'] = [create_input_file(platform, input_bucket, input_path)]
 
     if platform == 'emr':
         args = ['-r', 'emr'] 
@@ -47,7 +75,7 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--platform', required=True, choices=['local', 'emr'], 
         help='Which platform do you want to run on?')
     parser.add_argument('-i', '--input', required=True,
-        help='Where to find the input file.  If local, the filepath.  If EMR, s3 path.')
+        help='Where to find the input.  s3 path.')
     parser.add_argument('-o', '--output',
         help='Where to save the output.  Only valid and required for EMR')
 
@@ -60,4 +88,11 @@ if __name__ == '__main__':
         if args.output:
             raise argparse.ArgumentError('Output file not a local arg for local job')
 
-    main(args.platform, args.input, args.output)
+    match = S3_REGEX.match(args.input)
+
+    if match is None:
+        raise argparse.ArgumentError('Invalid input')
+
+    input_bucket, input_path = match.groups()
+
+    main(args.platform, input_bucket, input_path, args.output)
