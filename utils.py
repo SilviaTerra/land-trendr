@@ -47,7 +47,7 @@ def rast2text(rast_fn, date_string):
     try:
         datetime.strptime(date_string, '%Y-%m-%d')
     except Exception:
-        raise Exception('date_string must be in "YYYY-MM-DD" format')
+        raise ValueError('date_string must be in "YYYY-MM-DD" format')
 
     ds = gdal.Open(rast_fn)
     num_pix_wide, num_pix_high = ds.RasterXSize, ds.RasterYSize
