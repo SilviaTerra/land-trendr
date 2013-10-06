@@ -46,7 +46,7 @@ def create_input_file(platform, input_bucket, input_path):
         return LOCAL_INPUT_FILE
 
     if platform == 'emr':
-        input_key = '%s/%s' % (input_path, INPUT_FILE)
+        input_key = '%s%s' % (input_path, INPUT_FILE)
     
         key = bucket.new_key(input_key)
         key.set_contents_from_string(contents)
