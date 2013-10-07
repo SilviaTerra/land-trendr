@@ -15,7 +15,7 @@ DEFAULT_EMR_JOB_RUNNER_KWARGS = {
     'no_output': True,
     'bootstrap_cmds': [
         'sudo apt-get -y install gdal-bin python-gdal python-pip',
-        'sudo pip install boto numpy'
+        'sudo pip install boto numpy pandas'
     ],
     'python_archive': [DEPENDENCIES_TARFILE]
 }

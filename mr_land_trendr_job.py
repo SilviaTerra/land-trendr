@@ -31,13 +31,13 @@ class MRLandTrendrJob(MRJob):
         shutil.rmtree(os.path.dirname(rast_fn))
         return utils.serialize_rast(index_rast, {'date': datestring})
 
-    def point_reducer(self, point, values):
-        yield (point, sorted(values, key=lambda value: value['date']))
+    def analysis_mapper(self, point, values):
+        yield point, utils.analyze(values)
 
     def steps(self):
         return [
-            self.mr(mapper=self.parse_mapper,
-                    reducer=self.point_reducer)
+            self.mr(mapper=self.parse_mapper),
+            self.mr(mapper=self.analysis_mapper)
         ]
     
     def job_runner_kwargs(self):

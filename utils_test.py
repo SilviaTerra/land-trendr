@@ -65,6 +65,31 @@ class MultipleReplaceTestCase(unittest.TestCase):
             '(3 + 2) / (3-2) = 1'
         )
 
+class SerializeRastTestCase(unittest.TestCase):
+    
+    @raises(RuntimeError)
+    def test_invalid_type(self):
+        utils.serialize_rast('test_files/dummy.csv').next()
+    
+    def test_no_extra_data(self):
+        self.assertEquals(
+            utils.serialize_rast('test_files/dummy_single_band.tif').next(),
+            (
+                'POINT(-2097378.06273 2642045.53514)',
+                {'val': 16000.0}
+            )
+        )
+
+    def test_extra_data(self):
+        extra = {'date': "2013-01-30"}
+        self.assertEquals(
+            utils.serialize_rast('test_files/dummy_single_band.tif', extra).next(),
+            (
+                'POINT(-2097378.06273 2642045.53514)',
+                {'date': '2013-01-30', 'val': 16000.0}
+            )
+        )
+
 class RastUtilsTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -92,27 +117,14 @@ class RastUtilsTestCase(unittest.TestCase):
         )
         os.remove(alg_fn)
 
-class SerializeRastTestCase(unittest.TestCase):
-    
-    @raises(RuntimeError)
-    def test_invalid_type(self):
-        utils.serialize_rast('test_files/dummy.csv').next()
-    
-    def test_no_extra_data(self):
-        self.assertEquals(
-            utils.serialize_rast('test_files/dummy_single_band.tif').next(),
-            (
-                'POINT(-2097378.06273 2642045.53514)',
-                {'val': 16000.0}
-            )
-        )
+class AnalysisTestCase(unittest.TestCase):
 
-    def test_extra_data(self):
-        extra = {'date': "2013-01-30"}
-        self.assertEquals(
-            utils.serialize_rast('test_files/dummy_single_band.tif', extra).next(),
-            (
-                'POINT(-2097378.06273 2642045.53514)',
-                {'date': '2013-01-30', 'val': 16000.0}
-            )
-        )
+    def test_dict2timeseries(self):
+        data = [
+            {'date': '2012-09-01', 'val': 10.0},
+            {'date': '2011-09-01', 'val': 5.0}
+        ]
+        series = utils.dict2timeseries(data)
+        self.assertTrue(numpy.array_equal(series.values, [5.0, 10.0]))
+
+

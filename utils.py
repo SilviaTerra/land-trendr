@@ -212,3 +212,20 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/ras
 
     return array2raster(data, rast_fn, out_fn=out_fn)
 
+#############
+# Analysis
+#############
+
+import pandas as pd
+
+def dict2timeseries(dict_list):
+    """
+    Given a list of dicts in the format:
+        [{'date': '2011-09-01', 'val': 160.0}, {'date': '2012-09-01', 'val': 160.0}]
+    Put them into a sorted time series
+    """
+    dates = [parse_date(x['date']) for x in dict_list]
+    vals = [x['val'] for x in dict_list]
+    series = pd.Series(data=vals, index=dates)
+    series.sort()
+    return series
