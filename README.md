@@ -8,6 +8,7 @@ Mapreduce implementation of Dr. Robert Kennedy's LandTrendr change detection sys
 Install
 -------
     sudo apt-get install python-pip python-virtualenv virtualenvwrapper
+    mkvirtualenv land-trendr
     pip install -r requirements.txt
 
 If you're getting errors importing gdal, try:
@@ -16,7 +17,11 @@ If you're getting errors importing gdal, try:
 
 Running locally
 ---------------
-    python land_trendr.py -p local -i s3://alpha-silviaterra-landtrendr/testing
+    python land_trendr.py -p local -i s3://alpha-silviaterra-landtrendr/testing/
+
+Running on EMR
+--------------
+    python land_trendr.py -p emr -i s3://alpha-silviaterra-landtrendr/testing/ -o s3://alpha-silviaterra-landtrendr/testing/output/
 
 Running tests
 -------------
