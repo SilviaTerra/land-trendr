@@ -101,7 +101,7 @@ def ds2array(ds, band=1):
 
 def array2raster(array, template_rast_fn, out_fn=None, no_data_val=None, data_type=None):
     """
-    Given a 2-dimensional numpy array and a template raster,
+    Given a 2-dimensional np array and a template raster,
     write the array out to a georeferenced raster in the same style as the template.
 
     For the no_data_val and data_type, if no value is specified it falls back
@@ -170,7 +170,7 @@ def serialize_rast(rast_fn, extra_data={}):
 # Raster algebra
 ##################
 
-import numpy #referenced in eval code
+import numpy as np #referenced in eval code
 
 def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/rast_algebra.tif'):
     """
@@ -205,7 +205,7 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/ras
     if mask_eqn:
         mod_mask_eqn = multiple_replace(mask_eqn, band_replace)
         data = eval(
-            'numpy.choose(%s, (no_data_val, %s)))' % (mod_mask_eqn, mod_eqn)
+            'np.choose(%s, (no_data_val, %s)))' % (mod_mask_eqn, mod_eqn)
         )
     else:
         data = eval(mod_eqn)
@@ -254,7 +254,7 @@ def despike(time_series):
 
     Outputs a modified series with nulled out outliers
     """
-    std_dev = numpy.std(time_series) #standard deviation
+    std_dev = np.std(time_series) #standard deviation
     triples = [time_series[i:i+3] for i in range(0, len(time_series)-2)]
     despiked = []
     despiked.append(time_series[0]) #first not an outlier
@@ -272,8 +272,60 @@ def despike(time_series):
     despiked.append(time_series[-1]) #last not an outlier
     return pd.Series(data=despiked, index=time_series.index.values)
 
+def least_squares(series):
+    """
+    Given a series, calculate the line:
+        y = mx + c
+    That minimizes the sums of squared errors through the points.
+    Return:
+        (m, c), sum_residuals
+    """
+    x, y = series.index.values, series.values 
+    A = np.vstack([x, np.ones(len(x))]).T
+    solution = np.linalg.lstsq(A, y)
+    m, c = solution[0]
+    sum_residuals = np.sum(solution[1])
+    return (m, c), sum_residuals #TODO double check this with zack
 
+def find_segments(j, e, c, OPT):
+    """
+    Given an index j, a residuals dictionary, a line cost, and a
+    dictionary of optimal costs for each index
 
+    """
+    if j == -1:
+        return []
+    else:
+        vals = [(e[i][j] + c + OPT[i-1]) for i in range(0, j+1)]
+        min_index = vals.index(min(vals))
+        return find_segments(min_index-1, e, c, OPT) + [min_index]
 
+def segmented_least_squares(series, line_cost):
+    """
+    Given a series, use Bellman's dynamic programming segmented least squares
+    algorithm to find the set of lines that minimizes the sum of:
+        * total sums of squared errors
+        * num_lines * line_cost
+    """
+    n = len(series)
+    
+    e = dict([(i, {}) for i in range(n)]) #errors (residuals) 
+    #format: {
+    #   <start_x>: {<end_x>: <resid>, <end_x+1>: <resid>, ...}, 
+    #   ...
+    #}
+    
+    #calculate least squares between all points
+    for j in range(0, n):
+        for i in range(0, j+1):
+            e[i][j] = 0 if i == j else least_squares(series[i:j+1])[1]
 
+    #calculate optimal cost for each step
+    OPT = {-1: 0}
+    for j in range(0, n):
+        vals = [(e[i][j] + line_cost + OPT[i-1]) for i in range(0, j+1)]
+        OPT[j] = min(vals)
+
+    #unfurl the optimal segments backwards to find the segments
+    return find_segments(n-1, e, line_cost, OPT)
 

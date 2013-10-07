@@ -157,3 +157,8 @@ class AnalysisTestCase(unittest.TestCase):
             [1, None, 1, None, 1, 1, 1]
         )
 
+    def test_least_squares(self):
+        self.assertEquals(
+           utils.least_squares(pd.Series([1,2.1, 3, 4.4, 4.7])),
+           ((0.96999999999999997, 1.1000000000000008), 0.24300000000000019)
+        )
