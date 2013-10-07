@@ -113,4 +113,4 @@ if __name__ == '__main__':
 
     input_bucket, input_path = match.groups()
 
-    main(args.platform, input_bucket, input_path, args.output)
+    main(args.platform, input_bucket, input_path, output=args.output)
