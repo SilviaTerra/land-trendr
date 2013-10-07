@@ -7,10 +7,12 @@ DOWNLOAD_DIR = '/tmp'
 
 class MRLandTrendrJob(MRJob):
     def __init__(self, index_eqn, *args, **kwargs):
-        runner_kwargs = kwargs.pop('runner_kwargs', {})
+        extra_job_runner_kwargs = kwargs.pop('job_runner_kwargs', {})
+        extra_emr_job_runner_kwargs = kwargs.pop('emr_job_runner_kwargs', {})
         super(MRLandTrendrJob, self).__init__(*args, **kwargs)
         self.index_eqn = index_eqn
-        self.runner_kwargs = runner_kwargs
+        self.extra_job_runner_kwargs = extra_job_runner_kwargs
+        self.extra_emr_job_runner_kwargs = extra_emr_job_runner_kwargs
 
     def parse_mapper(self, _, line):
         s3_bucket, s3_key = line.split('\t')
@@ -36,7 +38,12 @@ class MRLandTrendrJob(MRJob):
     
     def job_runner_kwargs(self):
         kwargs = super(MRLandTrendrJob, self).job_runner_kwargs()
-        kwargs.update(self.runner_kwargs)        
+        kwargs.update(self.extra_job_runner_kwargs)        
+        return kwargs
+
+    def emr_job_runner_kwargs(self):
+        kwargs = super(MRLandTrendrJob, self).emr_job_runner_kwargs()
+        kwargs.update(self.extra_emr_job_runner_kwargs)        
         return kwargs
 
 if __name__ == '__main__':

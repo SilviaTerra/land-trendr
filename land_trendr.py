@@ -8,7 +8,7 @@ from mr_land_trendr_job import MRLandTrendrJob
 DEPENDENCIES_TARFILE = '/tmp/landtrendr_dependencies.tar.gz'
 DEPENDENCIES = []
 
-EMR_DEFAULT_OPTIONS = {
+DEFAULT_EMR_JOB_RUNNER_KWARGS = {
     'enable_emr_debugging': True,
     'no_output': True,
     'bootstrap_cmds': [
@@ -21,6 +21,15 @@ EMR_DEFAULT_OPTIONS = {
 S3_REGEX = re.compile('s3://([\w\-]+)/([\w\-\./]+)')
 INPUT_FILE = 'input.txt'
 LOCAL_INPUT_FILE = '/tmp/%s' % INPUT_FILE
+
+def add_bootstrap_cmds():
+    connection = boto.connect_s3()
+
+    DEFAULT_EMR_JOB_RUNNER_KWARGS['bootstrap_cmds'] += [
+        'echo [Credentials] | sudo tee /etc/boto.cfg',
+        'echo aws_access_key_id = %s | sudo tee -a /etc/boto.cfg' % connection.access_key,
+        'echo aws_secret_access_key = %s | sudo tee -a /etc/boto.cfg' % connection.secret_key
+    ]
 
 def bundle_dependencies():
     tar = tarfile.open(DEPENDENCIES_TARFILE, 'w:gz')
@@ -44,7 +53,7 @@ def create_input_file(platform, input_bucket, input_path):
         return LOCAL_INPUT_FILE
 
     if platform == 'emr':
-        input_key = '%s/%s' % (input_path, INPUT_FILE)
+        input_key = '%s%s' % (input_path, INPUT_FILE)
     
         key = bucket.new_key(input_key)
         key.set_contents_from_string(contents)
@@ -52,16 +61,19 @@ def create_input_file(platform, input_bucket, input_path):
         return 's3://%s/%s' % (input_bucket, input_key)
 
 def main(platform, input_bucket, input_path, index_eqn=None, output=None):
-    args, runner_kwargs = [], {}
-    runner_kwargs['input_paths'] = [create_input_file(platform, input_bucket, input_path)]
+    args, job_runner_kwargs = [], {}
+    job_runner_kwargs['input_paths'] = [create_input_file(platform, input_bucket, input_path)]
 
     if platform == 'emr':
         args = ['-r', 'emr'] 
-        runner_kwargs.update(EMR_DEFAULT_OPTIONS)
-        runner_kwargs['output_dir'] = output
+        job_runner_kwargs['output_dir'] = output
+        add_bootstrap_cmds()
+        emr_job_runner_kwargs = DEFAULT_EMR_JOB_RUNNER_KWARGS
         bundle_dependencies()
+    else:
+        emr_job_runner_kwargs = {}
 
-    job = MRLandTrendrJob(index_eqn, args=args, runner_kwargs=runner_kwargs)
+    job = MRLandTrendrJob(index_eqn, args=args, job_runner_kwargs=job_runner_kwargs, emr_job_runner_kwargs=emr_job_runner_kwargs)
 
     with job.make_runner() as runner:
         runner.run()
