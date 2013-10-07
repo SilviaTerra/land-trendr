@@ -222,10 +222,40 @@ def dict2timeseries(dict_list):
     """
     Given a list of dicts in the format:
         [{'date': '2011-09-01', 'val': 160.0}, {'date': '2012-09-01', 'val': 160.0}]
-    Put them into a sorted time series
+    Put them into a sorted time series and return
     """
     dates = [parse_date(x['date']) for x in dict_list]
     vals = [x['val'] for x in dict_list]
     series = pd.Series(data=vals, index=dates)
     series.sort()
     return series
+
+def despike(time_series):
+    """
+    Given a sorted timeseries, remove any spikes.
+    
+    Right now the algorithm is very simple, it just finds the standard 
+    deviation and prunes out any points that are more than a standard 
+    deviation away.
+
+    Outputs a modified series with nulled out outliers
+    """
+    std_dev = numpy.std(time_series) #standard deviation
+    triples = [time_series[i:i+3] for i in range(0, len(time_series)-2)]
+    despiked = []
+    despiked.append(time_series[0]) #first not an outlier
+    last_good = time_series[0]
+    for x, y, z in triples:
+        #If x and z are on same side of y (both above or both below)
+        #and both x and z are more than a std_dev away...
+        if not ((x <= y <= z) or (x >= y >= z)) and \
+                ((abs(y-x) > std_dev) and (abs(y-z) > std_dev)) and \
+                y != last_good:
+            despiked.append(None)
+        else:
+            despiked.append(y)
+            last_good = y
+    despiked.append(time_series[-1]) #last not an outlier
+    return pd.Series(data=despiked, index=time_series.index.values)
+
+

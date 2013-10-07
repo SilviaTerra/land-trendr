@@ -1,6 +1,7 @@
 from datetime import datetime
 import numpy
 import os
+import pandas as pd
 import shutil
 import unittest
 
@@ -117,8 +118,14 @@ class RastUtilsTestCase(unittest.TestCase):
         )
         os.remove(alg_fn)
 
+
 class AnalysisTestCase(unittest.TestCase):
 
+    def spike_helper(self, l1, l2):
+        dates = pd.date_range('1/1/2010', periods=len(l1), freq='A')
+        series1, series2 = [pd.Series(data=x, index=dates) for x in [l1, l2]]
+        numpy.testing.assert_array_equal(utils.despike(series1), series2)
+    
     def test_dict2timeseries(self):
         data = [
             {'date': '2012-09-01', 'val': 10.0},
@@ -127,4 +134,14 @@ class AnalysisTestCase(unittest.TestCase):
         series = utils.dict2timeseries(data)
         self.assertTrue(numpy.array_equal(series.values, [5.0, 10.0]))
 
+    def test_despike(self):
+        self.spike_helper( 
+            [1,1,1,5,1,1,1],
+            [1,1,1,None,1,1,1]
+        )
+
+        self.spike_helper(
+            [1,3,1,5,1,1,1],
+            [1, None, 1, None, 1, 1, 1]
+        )
 
