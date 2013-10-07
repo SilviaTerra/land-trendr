@@ -10,4 +10,5 @@ Running tests
 Install
 -------
 If you're getting errors importing gdal, try:
+
     ln -s /usr/lib/python2.7/dist-packages/osgeo $VIRTUAL_ENV/lib/python2.7/site-packages/osgeo
