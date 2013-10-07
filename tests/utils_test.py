@@ -125,7 +125,19 @@ class AnalysisTestCase(unittest.TestCase):
         dates = pd.date_range('1/1/2010', periods=len(l1), freq='A')
         series1, series2 = [pd.Series(data=x, index=dates) for x in [l1, l2]]
         numpy.testing.assert_array_equal(utils.despike(series1), series2)
-    
+
+    def test_timeseries2int_series(self):
+        data=[1,2,3,4,5]
+        ts = pd.Series(
+            data=data, 
+            index=pd.date_range('1/1/2010', periods=5, freq='A')
+        )
+        int_series = utils.timeseries2int_series(ts)
+        numpy.testing.assert_array_equal(
+            int_series,
+            pd.Series(data=data, index=[0, 365, 731, 1096, 1461])
+        )
+
     def test_dict2timeseries(self):
         data = [
             {'date': '2012-09-01', 'val': 10.0},

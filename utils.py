@@ -218,6 +218,20 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/ras
 
 import pandas as pd
 
+def timeseries2int_series(time_series):
+    """
+    It's tricky to do math on dates, so instead of having dates 
+    as the index for a series, start the series at 0 and instead 
+    use the number of days since the beginning of the series as the index.
+
+    Returns a new series
+    """
+    dates = time_series.index.values
+    days_series = [
+        (d - dates[0]).astype('timedelta64[D]').item().days for d in dates
+    ]
+    return pd.Series(data=time_series.values, index=days_series)
+
 def dict2timeseries(dict_list):
     """
     Given a list of dicts in the format:
@@ -257,5 +271,9 @@ def despike(time_series):
             last_good = y
     despiked.append(time_series[-1]) #last not an outlier
     return pd.Series(data=despiked, index=time_series.index.values)
+
+
+
+
 
 
