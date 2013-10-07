@@ -34,10 +34,17 @@ class MRLandTrendrJob(MRJob):
     def analysis_mapper(self, point, values):
         yield point, utils.analyze(values)
 
+    def date_mapper(self, point, values):
+        for value in values:
+            date = value.pop('date')
+            value['point'] = point
+            yield date, value
+
     def steps(self):
         return [
             self.mr(mapper=self.parse_mapper),
-            self.mr(mapper=self.analysis_mapper)
+            self.mr(mapper=self.analysis_mapper),
+            self.mr(mapper=self.date_mapper)
         ]
     
     def job_runner_kwargs(self):
