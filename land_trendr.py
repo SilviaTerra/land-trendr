@@ -1,7 +1,5 @@
 import argparse
 import boto
-import datetime
-import os
 import re
 import tarfile
 
@@ -53,7 +51,7 @@ def create_input_file(platform, input_bucket, input_path):
     
         return 's3://%s/%s' % (input_bucket, input_key)
 
-def main(platform, input_bucket, input_path, output=None):
+def main(platform, input_bucket, input_path, index_eqn=None, output=None):
     args, runner_kwargs = [], {}
     runner_kwargs['input_paths'] = [create_input_file(platform, input_bucket, input_path)]
 
@@ -63,7 +61,7 @@ def main(platform, input_bucket, input_path, output=None):
         runner_kwargs['output_dir'] = output
         bundle_dependencies()
 
-    job = MRLandTrendrJob(args=args, runner_kwargs=runner_kwargs)
+    job = MRLandTrendrJob(index_eqn, args=args, runner_kwargs=runner_kwargs)
 
     with job.make_runner() as runner:
         runner.run()

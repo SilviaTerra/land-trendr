@@ -6,9 +6,10 @@ from mrjob.job import MRJob
 DOWNLOAD_DIR = '/tmp'
 
 class MRLandTrendrJob(MRJob):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, index_eqn, *args, **kwargs):
         runner_kwargs = kwargs.pop('runner_kwargs', {})
         super(MRLandTrendrJob, self).__init__(*args, **kwargs)
+        self.index_eqn = index_eqn
         self.runner_kwargs = runner_kwargs
 
     def parse_mapper(self, _, line):
