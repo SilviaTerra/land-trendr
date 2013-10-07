@@ -1,4 +1,9 @@
 import os
+
+###############################
+# Compression / Decompression
+###############################
+
 import shutil
 import tarfile
 import zipfile
@@ -32,6 +37,9 @@ def decompress(filename, out_dir='/tmp/decompressed'):
     
     return [os.path.join(out_dir, fn) for fn in os.listdir(out_dir)]
 
+#################################
+# String parsing
+#################################
 from datetime import datetime
 
 def parse_date(date_string):
@@ -44,7 +52,8 @@ def parse_date(date_string):
     except Exception:
         raise ValueError('date_string must be in "YYYY-MM-DD" format')
 
-import re
+import re 
+
 def parse_eqn_bands(eqn):
     """
     Given a string equation like:
@@ -53,7 +62,21 @@ def parse_eqn_bands(eqn):
     """
     return [int(d) for d in set(re.compile('B(?P<band_num>\d+)').findall(eqn))]
 
-import numpy
+def multiple_replace(string, replacements):
+    """
+    Given a string and a dictionary of replacements in the format:
+        { <word_to_replace>: <replacement>, ... }
+    Make all the replacements and return the new string.
+
+    From: http://stackoverflow.com/questions/2400504/
+    """
+    pattern = re.compile('|'.join(replacements.keys()))
+    return pattern.sub(lambda x: replacements[x.group()], string)
+
+####################
+# Raster Read/Write
+####################
+
 from osgeo import gdal
 
 def ds2array(ds, band=1):
@@ -109,48 +132,6 @@ def array2raster(array, template_rast_fn, out_fn=None, no_data_val=None, data_ty
 
     return out_fn
 
-def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/rast_algebra.tif'):
-    """
-    Given a raster file, 
-    a string equation in the format: TODO,
-    and an optional output file name,
-
-    create a new raster with the equation applied to it
-    """
-    gdal.UseExceptions() #enable exception-throwing by GDAL
-    
-    ds = gdal.Open(rast_fn)
-    if not no_data_val:
-        no_data_val = ds.GetRasterBand(1).GetNoDataValue()
-
-    eqn_bands = parse_eqn_bands(eqn)
-    mask_bands = parse_eqn_bands(mask_eqn or '')
-    all_bands = eqn_bands.union(mask_bands)
-
-    min_band, max_band = min(all_bands), max(all_bands)
-    if max_band > ds.RasterCount:
-        raise Exception('Band %s not present in %s' % (max_band, rast_fn))
-    if min_band <= 0:
-        raise Exception('Invalid band "%s" - bands must be >= 1')
-
-    eqn = '(B3-B2)/(B3+B2)'
-
-    band_dict = dict([(b_num, ds2array(ds, b_num)) for b_num in all_bands])
-    
-
-    mod_eqn, mod_mask_eqn = eqn, mask_eqn or ''
-    if band_dict:
-        for e in [mod_eqn, mod_mask_eqn]:
-            for b in all_bands:
-                e = e.replace('B%s' % b, 'band_dict[%s]' % b)
-
-    if mask_eqn:
-        data = eval(
-            'numpy.choose(%s, (no_data_val, %s)))' % (mod_mask_eqn, mod_eqn)
-        )
-    else:
-        data = eval(mod_eqn)
-
 def serialize_rast(rast_fn, extra_data={}):
     """
     Given a georeferenced raster filename,
@@ -176,4 +157,50 @@ def serialize_rast(rast_fn, extra_data={}):
             pt_data = {'val': float(val)}
             pt_data.update(extra_data)
             yield pt_wkt, pt_data
+
+##################
+# Raster algebra
+##################
+
+import numpy #referenced in eval code
+
+def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/rast_algebra.tif'):
+    """
+    Given a raster file, 
+    a string equation in the format: TODO,
+    and an optional output file name,
+
+    create a new raster with the equation applied to it
+    """
+    gdal.UseExceptions() #enable exception-throwing by GDAL
+    
+    ds = gdal.Open(rast_fn)
+    if not no_data_val:
+        no_data_val = ds.GetRasterBand(1).GetNoDataValue()
+
+    eqn_bands = parse_eqn_bands(eqn)
+    mask_bands = parse_eqn_bands(mask_eqn or '')
+    all_bands = set(eqn_bands + mask_bands)
+
+    min_band, max_band = min(all_bands), max(all_bands)
+    if max_band > ds.RasterCount:
+        raise Exception('Band %s not present in %s' % (max_band, rast_fn))
+    if min_band <= 0:
+        raise Exception('Invalid band "%s" - bands must be >= 1')
+
+    #bands is referenced in the modified equations
+    bands = dict([(b, ds2array(ds, b)) for b in all_bands])
+    
+    band_replace = dict([('B%s' %b, 'bands[%s]' % b) for b in all_bands])
+    mod_eqn = multiple_replace(eqn, band_replace)
+
+    if mask_eqn:
+        mod_mask_eqn = multiple_replace(mask_eqn, band_replace)
+        data = eval(
+            'numpy.choose(%s, (no_data_val, %s)))' % (mod_mask_eqn, mod_eqn)
+        )
+    else:
+        data = eval(mod_eqn)
+
+    return array2raster(data, rast_fn, out_fn=out_fn)
 
