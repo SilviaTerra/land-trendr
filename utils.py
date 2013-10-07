@@ -241,8 +241,7 @@ def dict2timeseries(dict_list):
     dates = [parse_date(x['date']) for x in dict_list]
     vals = [x['val'] for x in dict_list]
     series = pd.Series(data=vals, index=dates)
-    series.sort()
-    return series
+    return series.sort_index()
 
 def despike(time_series):
     """
@@ -290,8 +289,8 @@ def least_squares(series):
 def find_segments(j, e, c, OPT):
     """
     Given an index j, a residuals dictionary, a line cost, and a
-    dictionary of optimal costs for each index
-
+    dictionary of optimal costs for each index,
+    return a list of the optimal endpoints for least squares segments from 0-j
     """
     if j == -1:
         return []
@@ -306,6 +305,7 @@ def segmented_least_squares(series, line_cost):
     algorithm to find the set of lines that minimizes the sum of:
         * total sums of squared errors
         * num_lines * line_cost
+    Return the series indices of the endpoints of the lines
     """
     n = len(series)
     
@@ -327,5 +327,48 @@ def segmented_least_squares(series, line_cost):
         OPT[j] = min(vals)
 
     #unfurl the optimal segments backwards to find the segments
-    return find_segments(n-1, e, line_cost, OPT)
+    list_indices = find_segments(n-1, e, line_cost, OPT) 
+    list_indices += [n-1] #last index always in
+    return [series.index.values[x] for x in list_indices]
+
+def analyze(values, line_cost):
+    """
+    Given data in the format:
+    [
+        {'date': '2011-09-01', 'val': 160.0}, 
+        {'date': '2012-09-01', 'val': 180.0},
+        ...
+    ]
+    Run a bunch of analysis on it to do change labeling
+    """
+    #convert to time series 
+    ts = dict2timeseries(values)
+
+    #despike
+    despiked = despike(ts)
+    print despiked
+    is_spike = [np.isnan(x) for x in despiked.values]
+
+    #convert from time series to int series (for least squares)
+    int_series = timeseries2int_series(despiked)
+
+    #TODO remove nans from spikes?
+    
+    #get vertices
+    vertices = segmented_least_squares(int_series, line_cost)
+    is_vertex = [x in vertices for x in int_series.index.values]
+
+    #TODO calculate fitted values
+    fitted = [0] * len(values)
+
+    output = []
+    for t, d, f, s, v in zip(ts, ts.index, fitted, is_spike, is_vertex):
+        output.append({
+            'date': d.strftime('%Y-%m-%d'), 
+            'val': t,
+            'fitted_val': f,
+            'spike': s,
+            'vertex': v,
+        })
+    return output
 

@@ -32,7 +32,8 @@ class MRLandTrendrJob(MRJob):
         return utils.serialize_rast(index_rast, {'date': datestring})
 
     def analysis_mapper(self, point, values):
-        yield point, utils.analyze(values)
+        LINE_COST = 10 #TODO arg
+        yield point, utils.analyze(values, LINE_COST)
 
     def date_mapper(self, point, values):
         for value in values:

@@ -123,8 +123,8 @@ class AnalysisTestCase(unittest.TestCase):
 
     def spike_helper(self, l1, l2):
         dates = pd.date_range('1/1/2010', periods=len(l1), freq='A')
-        series1, series2 = [pd.Series(data=x, index=dates) for x in [l1, l2]]
-        numpy.testing.assert_array_equal(utils.despike(series1), series2)
+        s1, s2 = [pd.Series(data=x, index=dates) for x in [l1, l2]]
+        numpy.testing.assert_array_equal(utils.despike(s1), s2)
 
     def test_timeseries2int_series(self):
         data=[1,2,3,4,5]
@@ -162,3 +162,60 @@ class AnalysisTestCase(unittest.TestCase):
            utils.least_squares(pd.Series([1,2.1, 3, 4.4, 4.7])),
            ((0.96999999999999997, 1.1000000000000008), 0.24300000000000019)
         )
+
+    def test_analyze_simple(self):
+        line_cost = 2
+        values = [
+            {'date': '2010-12-31', 'val': 1},
+            {'date': '2011-12-31', 'val': 2},
+            {'date': '2012-12-31', 'val': 3},
+            {'date': '2013-12-31', 'val': 4},
+            {'date': '2014-12-31', 'val': 5},
+            {'date': '2015-12-31', 'val': 7},
+            {'date': '2016-12-31', 'val': 9},
+            {'date': '2017-12-31', 'val': 11},
+            {'date': '2018-12-31', 'val': 13},
+            {'date': '2019-12-31', 'val': 15}
+        ]
+        expected_out = [
+            {'date': '2010-12-31', 'vertex': True, 'fitted_val': 0, 'val': 1, 'spike': False},
+            {'date': '2011-12-31', 'vertex': False, 'fitted_val': 0, 'val': 2, 'spike': False},
+            {'date': '2012-12-31', 'vertex': False, 'fitted_val': 0, 'val': 3, 'spike': False},
+            {'date': '2013-12-31', 'vertex': False, 'fitted_val': 0, 'val': 4, 'spike': False},
+            {'date': '2014-12-31', 'vertex': True, 'fitted_val': 0, 'val': 5, 'spike': False},
+            {'date': '2015-12-31', 'vertex': False, 'fitted_val': 0, 'val': 7, 'spike': False},
+            {'date': '2016-12-31', 'vertex': False, 'fitted_val': 0, 'val': 9, 'spike': False},
+            {'date': '2017-12-31', 'vertex': False, 'fitted_val': 0, 'val': 11, 'spike': False},
+            {'date': '2018-12-31', 'vertex': False, 'fitted_val': 0, 'val': 13, 'spike': False},
+            {'date': '2019-12-31', 'vertex': True, 'fitted_val': 0, 'val': 15, 'spike': False}
+        ]
+        self.assertEquals(utils.analyze(values, line_cost), expected_out)
+
+    def test_analyze_simple_spike(self):
+        line_cost = 2
+        values = [
+            {'date': '2010-12-31', 'val': 1},
+            {'date': '2011-12-31', 'val': 2},
+            {'date': '2012-12-31', 'val': 3},
+            {'date': '2013-12-31', 'val': 4},
+            {'date': '2014-12-31', 'val': 1000},
+            {'date': '2015-12-31', 'val': 7},
+            {'date': '2016-12-31', 'val': 9},
+            {'date': '2017-12-31', 'val': 11},
+            {'date': '2018-12-31', 'val': 13},
+            {'date': '2019-12-31', 'val': 15}
+        ]
+        expected_out = [
+            {'date': '2010-12-31', 'vertex': True, 'fitted_val': 0, 'val': 1, 'spike': False},
+            {'date': '2011-12-31', 'vertex': False, 'fitted_val': 0, 'val': 2, 'spike': False},
+            {'date': '2012-12-31', 'vertex': False, 'fitted_val': 0, 'val': 3, 'spike': False},
+            {'date': '2013-12-31', 'vertex': False, 'fitted_val': 0, 'val': 4, 'spike': False},
+            {'date': '2014-12-31', 'vertex': False, 'fitted_val': 0, 'val': 1000, 'spike': True},
+            {'date': '2015-12-31', 'vertex': False, 'fitted_val': 0, 'val': 7, 'spike': False},
+            {'date': '2016-12-31', 'vertex': False, 'fitted_val': 0, 'val': 9, 'spike': False},
+            {'date': '2017-12-31', 'vertex': False, 'fitted_val': 0, 'val': 11, 'spike': False},
+            {'date': '2018-12-31', 'vertex': False, 'fitted_val': 0, 'val': 13, 'spike': False},
+            {'date': '2019-12-31', 'vertex': True, 'fitted_val': 0, 'val': 15, 'spike': False}
+        ]
+        self.assertEquals(utils.analyze(values, line_cost), expected_out)
+
