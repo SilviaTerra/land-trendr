@@ -6,7 +6,9 @@ import tarfile
 from mr_land_trendr_job import MRLandTrendrJob
 
 DEPENDENCIES_TARFILE = '/tmp/landtrendr_dependencies.tar.gz'
-DEPENDENCIES = []
+DEPENDENCIES = [
+    'utils.py',
+]
 
 DEFAULT_EMR_JOB_RUNNER_KWARGS = {
     'enable_emr_debugging': True,
