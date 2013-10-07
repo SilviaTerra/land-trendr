@@ -17,7 +17,7 @@ DEFAULT_EMR_JOB_RUNNER_KWARGS = {
         'sudo apt-get -y install gdal-bin python-gdal python-pip',
         'sudo pip install boto numpy pandas'
     ],
-    'python_archive': [DEPENDENCIES_TARFILE]
+    'python_archives': [DEPENDENCIES_TARFILE]
 }
 
 S3_REGEX = re.compile('s3://([\w\-]+)/([\w\-\./]+)')
@@ -113,4 +113,4 @@ if __name__ == '__main__':
 
     input_bucket, input_path = match.groups()
 
-    main(args.platform, input_bucket, input_path, args.output)
+    main(args.platform, input_bucket, input_path, output=args.output)
