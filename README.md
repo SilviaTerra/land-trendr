@@ -2,6 +2,9 @@ land-trendr
 ===========
 Mapreduce implementation of Dr. Robert Kennedy's LandTrendr change detection system
 
+ * Original project website: http://landtrendr.forestry.oregonstate.edu/
+ * Original project code: https://github.com/KennedyResearch/LandTrendr-2012
+
 Install
 -------
     sudo apt-get install python-pip python-virtualenv virtualenvwrapper
