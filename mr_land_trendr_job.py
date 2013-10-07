@@ -1,12 +1,16 @@
 import boto
 import os
+import shutil
 
 from mrjob.job import MRJob
+
+import utils
 
 DOWNLOAD_DIR = '/tmp'
 
 class MRLandTrendrJob(MRJob):
-    def __init__(self, index_eqn, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        index_eqn = kwargs.pop('index_eqn', 'B1')
         extra_job_runner_kwargs = kwargs.pop('job_runner_kwargs', {})
         extra_emr_job_runner_kwargs = kwargs.pop('emr_job_runner_kwargs', {})
         super(MRLandTrendrJob, self).__init__(*args, **kwargs)
@@ -21,8 +25,11 @@ class MRLandTrendrJob(MRJob):
         key = bucket.get_key(s3_key)
         filename = os.path.join(DOWNLOAD_DIR, os.path.basename(key.key))
         key.get_contents_to_filename(filename)
-        # TODO: Max
-        yield filename, None
+        rast_fn = utils.decompress(filename)[0]
+        datestring = utils.filename2date(rast_fn)
+        index_rast = utils.rast_algebra(rast_fn, self.index_eqn)
+        shutil.rmtree(os.path.dirname(rast_fn))
+        return utils.serialize_rast(index_rast, {'date': datestring})
 
     def mapper(self, _, line):
         point, date, index = line.split('\t')

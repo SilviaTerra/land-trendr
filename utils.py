@@ -52,6 +52,14 @@ def parse_date(date_string):
     except Exception:
         raise ValueError('date_string must be in "YYYY-MM-DD" format')
 
+def filename2date(fn):
+    """
+    Given a filename, returns a datestring in the format YYYY-MM-DD
+    """
+    fn, _ = os.path.splitext(fn)
+    scene_id, y, m, d = os.path.basename(fn).split('_')
+    return '%s-%s-%s' % (y, m, d)
+
 import re 
 
 def parse_eqn_bands(eqn):

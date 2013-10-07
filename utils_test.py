@@ -40,6 +40,9 @@ class DateTestCase(unittest.TestCase):
     def test_valid_date(self):
         self.assertEquals(utils.parse_date('2012-01-13'), datetime(2012,1,13))
 
+    def test_filename2date(self):
+        self.assertEquals(utils.filename2date('/tmp/4529_2012_01_15.txt'), '2012-01-15')
+
 class ParseEqnTestCase(unittest.TestCase):
 
     def test_no_match(self):

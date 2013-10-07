@@ -61,6 +61,9 @@ def create_input_file(platform, input_bucket, input_path):
         return 's3://%s/%s' % (input_bucket, input_key)
 
 def main(platform, input_bucket, input_path, index_eqn=None, output=None):
+    if not index_eqn:
+        index_eqn = 'B1'
+    
     args, job_runner_kwargs = [], {}
     job_runner_kwargs['input_paths'] = [create_input_file(platform, input_bucket, input_path)]
 
@@ -73,7 +76,7 @@ def main(platform, input_bucket, input_path, index_eqn=None, output=None):
     else:
         emr_job_runner_kwargs = {}
 
-    job = MRLandTrendrJob(index_eqn, args=args, job_runner_kwargs=job_runner_kwargs, emr_job_runner_kwargs=emr_job_runner_kwargs)
+    job = MRLandTrendrJob(args=args, index_eqn=index_eqn, job_runner_kwargs=job_runner_kwargs, emr_job_runner_kwargs=emr_job_runner_kwargs)
 
     with job.make_runner() as runner:
         runner.run()
