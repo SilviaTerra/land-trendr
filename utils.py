@@ -279,25 +279,13 @@ def least_squares(series):
     Return:
         (m, c), sum_residuals
     """
+    series = series.dropna() #clean out any NaN vals
     x, y = series.index.values, series.values 
     A = np.vstack([x, np.ones(len(x))]).T
     solution = np.linalg.lstsq(A, y)
     m, c = solution[0]
     sum_residuals = np.sum(solution[1])
     return (m, c), sum_residuals #TODO double check this with zack
-
-def find_segments(j, e, c, OPT):
-    """
-    Given an index j, a residuals dictionary, a line cost, and a
-    dictionary of optimal costs for each index,
-    return a list of the optimal endpoints for least squares segments from 0-j
-    """
-    if j == -1:
-        return []
-    else:
-        vals = [(e[i][j] + c + OPT[i-1]) for i in range(0, j+1)]
-        min_index = vals.index(min(vals))
-        return find_segments(min_index-1, e, c, OPT) + [min_index]
 
 def segmented_least_squares(series, line_cost):
     """
@@ -307,6 +295,7 @@ def segmented_least_squares(series, line_cost):
         * num_lines * line_cost
     Return the series indices of the endpoints of the lines
     """
+    series = series.dropna() #remove any NaN vals
     n = len(series)
     
     e = dict([(i, {}) for i in range(n)]) #errors (residuals) 
@@ -331,6 +320,44 @@ def segmented_least_squares(series, line_cost):
     list_indices += [n-1] #last index always in
     return [series.index.values[x] for x in list_indices]
 
+def find_segments(j, e, c, OPT):
+    """
+    Given an index j, a residuals dictionary, a line cost, and a
+    dictionary of optimal costs for each index,
+    return a list of the optimal endpoints for least squares segments from 0-j
+    """
+    if j == -1:
+        return []
+    else:
+        vals = [(e[i][j] + c + OPT[i-1]) for i in range(0, j+1)]
+        min_index = vals.index(min(vals))
+        return find_segments(min_index-1, e, c, OPT) + [min_index]
+
+def vertices2eqns(series, is_vertex):
+    """
+    Given a series and an equally long boolean array of whether or not each 
+    item in the series is a vertex, calculate the regression segments and
+    return 2 new series 
+    (each is in reference to the regression line on the right of each item):
+        m: the slope
+        b: the y-intercept
+    """
+    vertices = series[is_vertex]
+    v_idx = vertices.index
+    vertex_pairs = [v_idx[i:i+2] for i in range(len(vertices)-1)]
+    vertex_eqns = dict([ #format {<vertex_label>: <(m,c)>, ...}
+        (v1, least_squares(series.loc[v1:v2])[0]) for v1, v2 in vertex_pairs
+    ])
+    #set last vertex eqn to the second to last vertex eqn
+    vertex_eqns[v_idx[-1]] = vertex_eqns[v_idx[-2]] 
+
+    eqns, curr_eqn = [], None
+    for i, is_v in zip(series.index, is_vertex):
+        if is_v:
+            curr_eqn = vertex_eqns[i] or curr_eqn #defaults to curr_eqn if last vertex
+        eqns.append(curr_eqn)
+    return pd.Series(data=eqns, index=series.index)
+
 def analyze(values, line_cost):
     """
     Given data in the format:
@@ -346,25 +373,23 @@ def analyze(values, line_cost):
 
     #despike
     despiked = despike(ts)
-    print despiked
-    is_spike = [np.isnan(x) for x in despiked.values]
+    is_spike = pd.isnull(despiked)
 
     #convert from time series to int series (for least squares)
     int_series = timeseries2int_series(despiked)
 
-    #TODO remove nans from spikes?
-    
     #get vertices
     vertices = segmented_least_squares(int_series, line_cost)
-    is_vertex = [x in vertices for x in int_series.index.values]
+    is_vertex = [x in vertices for x in int_series.index]
 
     #TODO calculate fitted values
     fitted = [0] * len(values)
 
     output = []
-    for t, d, f, s, v in zip(ts, ts.index, fitted, is_spike, is_vertex):
+    for t, d, i, f, s, v in zip(ts, ts.index, int_series.index, fitted, is_spike, is_vertex):
         output.append({
-            'date': d.strftime('%Y-%m-%d'), 
+            'day_index': i,
+            'date': d.strftime('%Y-%m-%d'),
             'val': t,
             'fitted_val': f,
             'spike': s,

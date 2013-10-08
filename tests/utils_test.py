@@ -118,7 +118,6 @@ class RastUtilsTestCase(unittest.TestCase):
         )
         os.remove(alg_fn)
 
-
 class AnalysisTestCase(unittest.TestCase):
 
     def spike_helper(self, l1, l2):
