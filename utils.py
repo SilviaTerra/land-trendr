@@ -226,7 +226,7 @@ def timeseries2int_series(time_series):
     ]
     return pd.Series(data=time_series.values, index=days_series)
 
-def dict2timeseries(dict_list):
+def dicts2timeseries(dict_list):
     """
     Given a list of dicts in the format:
         [{'date': '2011-09-01', 'val': 160.0}, {'date': '2012-09-01', 'val': 160.0}]
@@ -415,7 +415,7 @@ def get_idx(array_like, idx):
     else:
         return array_like[idx]
 
-def analyze(values, line_cost):
+def analyze(pix_datas, line_cost):
     """
     Given data in the format:
     [
@@ -436,7 +436,7 @@ def analyze(values, line_cost):
         'vertex'
     """
     # convert to time series 
-    ts = dict2timeseries(values)
+    ts = dicts2timeseries(pix_datas)
     formatted_dates = [d.strftime('%Y-%m-%d') for d in ts.index]
 
     # despike

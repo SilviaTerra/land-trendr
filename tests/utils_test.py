@@ -137,12 +137,12 @@ class AnalysisTestCase(unittest.TestCase):
             pd.Series(data=data, index=[0, 365, 731, 1096, 1461])
         )
 
-    def test_dict2timeseries(self):
+    def test_dicts2timeseries(self):
         data = [
             {'date': '2012-09-01', 'val': 10.0},
             {'date': '2011-09-01', 'val': 5.0}
         ]
-        series = utils.dict2timeseries(data)
+        series = utils.dicts2timeseries(data)
         self.assertTrue(np.array_equal(series.values, [5.0, 10.0]))
 
     def test_despike(self):
