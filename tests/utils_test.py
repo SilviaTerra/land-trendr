@@ -1,8 +1,8 @@
 from datetime import datetime
-import numpy
 import os
-import pandas as pd
 import shutil
+import numpy as np
+import pandas as pd
 import unittest
 
 from nose.tools import raises
@@ -113,8 +113,8 @@ class RastUtilsTestCase(unittest.TestCase):
     def test_map_algebra(self):
         alg_fn = utils.rast_algebra(self.template_fn, 'B1/2')
         self.assertEquals(
-            numpy.sum(utils.ds2array(gdal.Open(self.template_fn))) / 2,
-            numpy.sum(utils.ds2array(gdal.Open(alg_fn)))
+            np.sum(utils.ds2array(gdal.Open(self.template_fn))) / 2,
+            np.sum(utils.ds2array(gdal.Open(alg_fn)))
         )
         os.remove(alg_fn)
 
@@ -123,7 +123,7 @@ class AnalysisTestCase(unittest.TestCase):
     def spike_helper(self, l1, l2):
         dates = pd.date_range('1/1/2010', periods=len(l1), freq='A')
         s1, s2 = [pd.Series(data=x, index=dates) for x in [l1, l2]]
-        numpy.testing.assert_array_equal(utils.despike(s1), s2)
+        np.testing.assert_array_equal(utils.despike(s1), s2)
 
     def test_timeseries2int_series(self):
         data=[1,2,3,4,5]
@@ -132,7 +132,7 @@ class AnalysisTestCase(unittest.TestCase):
             index=pd.date_range('1/1/2010', periods=5, freq='A')
         )
         int_series = utils.timeseries2int_series(ts)
-        numpy.testing.assert_array_equal(
+        np.testing.assert_array_equal(
             int_series,
             pd.Series(data=data, index=[0, 365, 731, 1096, 1461])
         )
@@ -143,7 +143,7 @@ class AnalysisTestCase(unittest.TestCase):
             {'date': '2011-09-01', 'val': 5.0}
         ]
         series = utils.dict2timeseries(data)
-        self.assertTrue(numpy.array_equal(series.values, [5.0, 10.0]))
+        self.assertTrue(np.array_equal(series.values, [5.0, 10.0]))
 
     def test_despike(self):
         self.spike_helper( 
@@ -158,12 +158,64 @@ class AnalysisTestCase(unittest.TestCase):
 
     def test_least_squares(self):
         self.assertEquals(
-           utils.least_squares(pd.Series([1,2.1, 3, 4.4, 4.7])),
+           utils.least_squares(pd.Series([1, 2.1, 3, 4.4, 4.7])),
            ((0.96999999999999997, 1.1000000000000008), 0.24300000000000019)
         )
 
+    def test_segmented_least_squares(self):
+        s1 = pd.Series([0, 0, 0, 1, 2, 3])
+        s2 = pd.Series([0, 0, 0, 1, 1, 1, 3, 3])
+        self.assertEquals(
+            utils.segmented_least_squares(s1, 0.0001),
+            [0, 2, 5]
+        )
+        self.assertEquals(
+            utils.segmented_least_squares(s2, 0.0001),
+            [0, 3, 6, 7]
+        )
+
+    def test_vertices2eqns(self):
+        s = pd.Series([0, 0, 0, 1, 2, 3])
+        v = pd.Series([True, False, True, False, False, True])
+        expected = [
+            (0.0, 0.0), 
+            (0.0, 0.0), 
+            (1.0000000000000002, -2.0000000000000031),
+            (1.0000000000000002, -2.0000000000000031),
+            (1.0000000000000002, -2.0000000000000031),
+            (1.0000000000000002, -2.0000000000000031)
+        ]
+
+        self.assertTrue(
+            np.all(utils.vertices2eqns(s, v) == expected)
+        )
+
+    def test_apply_eqn(self):
+        self.assertEquals(utils.apply_eqn(5, (3, 2)), 17)
+
+    def test_eqns2fitted_points(self):
+        s = pd.Series([0, 0, 0, 1, 2, 4])
+        eqns = [
+            (0, 0),
+            (0, 0),
+            (1, -2.1),
+            (1, -2.1),
+            (1, -2.1),
+            (1, -2.1)
+        ]
+        fit_series, fit_eqn = utils.eqns2fitted_points(s, eqns)
+        fit_series = np.round(fit_series, 1) # avoid floating point errors
+        expected_series = [0, 0, 0, 0.9, 1.9, 2.9]
+        expected_eqns = [
+                (0, 0), (0, 0), (0, 0), (1, -2.1), (1, -2.1), (1, -2.1)]
+        self.assertTrue(np.all(fit_series == expected_series))
+        self.assertTrue(np.all(fit_eqn == expected_eqns))
+
+    def test_get_idx(self):
+        self.assertEquals(utils.get_idx(['a','b','c'], 1), 'b')
+        self.assertEquals(utils.get_idx(pd.Series(['a','b','c']), 1), 'b')
+
     def test_analyze_simple(self):
-        self.maxDiff = None
         line_cost = 2
         values = [
             {'date': '2010-12-31', 'val': 1},
@@ -178,18 +230,22 @@ class AnalysisTestCase(unittest.TestCase):
             {'date': '2019-12-31', 'val': 15}
         ]
         expected_out = [
-            {'date': '2010-12-31', 'vertex': True, 'fitted_val': 0, 'val': 1, 'spike': False},
-            {'date': '2011-12-31', 'vertex': False, 'fitted_val': 0, 'val': 2, 'spike': False},
-            {'date': '2012-12-31', 'vertex': False, 'fitted_val': 0, 'val': 3, 'spike': False},
-            {'date': '2013-12-31', 'vertex': False, 'fitted_val': 0, 'val': 4, 'spike': False},
-            {'date': '2014-12-31', 'vertex': True, 'fitted_val': 0, 'val': 5, 'spike': False},
-            {'date': '2015-12-31', 'vertex': False, 'fitted_val': 0, 'val': 7, 'spike': False},
-            {'date': '2016-12-31', 'vertex': False, 'fitted_val': 0, 'val': 9, 'spike': False},
-            {'date': '2017-12-31', 'vertex': False, 'fitted_val': 0, 'val': 11, 'spike': False},
-            {'date': '2018-12-31', 'vertex': False, 'fitted_val': 0, 'val': 13, 'spike': False},
-            {'date': '2019-12-31', 'vertex': True, 'fitted_val': 0, 'val': 15, 'spike': False}
+            {'eqn_fit': (0.0027374754316638297, 1.0000004496264048),  'eqn_right': (0.0027374754316638297, 1.0000004496264048),  'index_date': '2010-12-31',  'index_day': 0,  'spike': False,  'val_fit': 1.0000004496264048,  'val_raw': 1,  'vertex': True},
+            {'eqn_fit': (0.0027374754316638297, 1.0000004496264048),  'eqn_right': (0.0027374754316638297, 1.0000004496264048),  'index_date': '2011-12-31',  'index_day': 365,  'spike': False,  'val_fit': 1.9991789821837025,  'val_raw': 2,  'vertex': False},
+            {'eqn_fit': (0.0027374754316638297, 1.0000004496264048),  'eqn_right': (0.0027374754316638297, 1.0000004496264048),  'index_date': '2012-12-31',  'index_day': 731,  'spike': False,  'val_fit': 3.001094990172664,  'val_raw': 3,  'vertex': False},
+            {'eqn_fit': (0.0027374754316638297, 1.0000004496264048),  'eqn_right': (0.0027374754316638297, 1.0000004496264048),  'index_date': '2013-12-31',  'index_day': 1096,  'spike': False,  'val_fit': 4.0002735227299624,  'val_raw': 4,  'vertex': False},
+            {'eqn_fit': (0.0054760218598211806, -3.0009885655254509),  'eqn_right': (0.0054760218598211806, -3.0009885655254509),  'index_date': '2014-12-31',  'index_day': 1461,  'spike': False,  'val_fit': 4.9994793716732948,  'val_raw': 5,  'vertex': True},
+            {'eqn_fit': (0.0054760218598211806, -3.0009885655254509),  'eqn_right': (0.0054760218598211806, -3.0009885655254509),  'index_date': '2015-12-31',  'index_day': 1826,  'spike': False,  'val_fit': 6.9982273505080252,  'val_raw': 7,  'vertex': False},
+            {'eqn_fit': (0.0054760218598211806, -3.0009885655254509),  'eqn_right': (0.0054760218598211806, -3.0009885655254509),  'index_date': '2016-12-31',  'index_day': 2192,  'spike': False,  'val_fit': 9.002451351202577,  'val_raw': 9,  'vertex': False},
+            {'eqn_fit': (0.0054760218598211806, -3.0009885655254509),  'eqn_right': (0.0054760218598211806, -3.0009885655254509),  'index_date': '2017-12-31',  'index_day': 2557,  'spike': False,  'val_fit': 11.001199330037309,  'val_raw': 11,  'vertex': False},
+            {'eqn_fit': (0.0054760218598211806, -3.0009885655254509),  'eqn_right': (0.0054760218598211806, -3.0009885655254509),  'index_date': '2018-12-31',  'index_day': 2922,  'spike': False,  'val_fit': 12.999947308872041,  'val_raw': 13,  'vertex': False},
+            {'eqn_fit': (0.0054760218598211806, -3.0009885655254509),  'eqn_right': (0.0054760218598211806, -3.0009885655254509),  'index_date': '2019-12-31',  'index_day': 3287,  'spike': False,  'val_fit': 14.99869528770677,  'val_raw': 15,  'vertex': True}
         ]
-        self.assertEquals(utils.analyze(values, line_cost), expected_out)
+        
+        self.assertEquals(
+            list(utils.analyze(values, line_cost)), 
+            expected_out
+        )
 
     def test_analyze_simple_spike(self):
         line_cost = 2
@@ -205,17 +261,22 @@ class AnalysisTestCase(unittest.TestCase):
             {'date': '2018-12-31', 'val': 13},
             {'date': '2019-12-31', 'val': 15}
         ]
+
         expected_out = [
-            {'date': '2010-12-31', 'vertex': True, 'fitted_val': 0, 'val': 1, 'spike': False},
-            {'date': '2011-12-31', 'vertex': False, 'fitted_val': 0, 'val': 2, 'spike': False},
-            {'date': '2012-12-31', 'vertex': False, 'fitted_val': 0, 'val': 3, 'spike': False},
-            {'date': '2013-12-31', 'vertex': False, 'fitted_val': 0, 'val': 4, 'spike': False},
-            {'date': '2014-12-31', 'vertex': False, 'fitted_val': 0, 'val': 1000, 'spike': True},
-            {'date': '2015-12-31', 'vertex': False, 'fitted_val': 0, 'val': 7, 'spike': False},
-            {'date': '2016-12-31', 'vertex': False, 'fitted_val': 0, 'val': 9, 'spike': False},
-            {'date': '2017-12-31', 'vertex': False, 'fitted_val': 0, 'val': 11, 'spike': False},
-            {'date': '2018-12-31', 'vertex': False, 'fitted_val': 0, 'val': 13, 'spike': False},
-            {'date': '2019-12-31', 'vertex': True, 'fitted_val': 0, 'val': 15, 'spike': False}
+            {'eqn_fit': (0.0032558793548741337, 0.78357535042314486),  'eqn_right': (0.0032558793548741337, 0.78357535042314486),  'index_date': '2010-12-31',  'index_day': 0,  'spike': False,  'val_fit': 0.78357535042314486,  'val_raw': 1,  'vertex': True},
+            {'eqn_fit': (0.0032558793548741337, 0.78357535042314486),  'eqn_right': (0.0032558793548741337, 0.78357535042314486),  'index_date': '2011-12-31',  'index_day': 365,  'spike': False,  'val_fit': 1.9719713149522036,  'val_raw': 2,  'vertex': False},
+            {'eqn_fit': (0.0032558793548741337, 0.78357535042314486),  'eqn_right': (0.0032558793548741337, 0.78357535042314486),  'index_date': '2012-12-31',  'index_day': 731,  'spike': False,  'val_fit': 3.1636231588361365,  'val_raw': 3,  'vertex': False},
+            {'eqn_fit': (0.0032558793548741337, 0.78357535042314486),  'eqn_right': (0.0032558793548741337, 0.78357535042314486),  'index_date': '2013-12-31',  'index_day': 1096,  'spike': False,  'val_fit': 4.3520191233651957,  'val_raw': 4,  'vertex': False},
+            {'eqn_fit': (0.0032558793548741337, 0.78357535042314486),  'eqn_right': (0.0032558793548741337, 0.78357535042314486),  'index_date': '2014-12-31',  'index_day': 1461,  'spike': True,  'val_fit': 5.540415087894254,  'val_raw': 1000,  'vertex': False},
+            {'eqn_fit': (0.0054764496171133877, -3.0021863810355005),  'eqn_right': (0.0054764496171133877, -3.0021863810355005),  'index_date': '2015-12-31',  'index_day': 1826,  'spike': False,  'val_fit': 6.9978106198135457,  'val_raw': 7,  'vertex': True},
+            {'eqn_fit': (0.0054764496171133877, -3.0021863810355005),  'eqn_right': (0.0054764496171133877, -3.0021863810355005),  'index_date': '2016-12-31',  'index_day': 2192,  'spike': False,  'val_fit': 9.0021911796770464,  'val_raw': 9,  'vertex': False},
+            {'eqn_fit': (0.0054764496171133877, -3.0021863810355005),  'eqn_right': (0.0054764496171133877, -3.0021863810355005),  'index_date': '2017-12-31',  'index_day': 2557,  'spike': False,  'val_fit': 11.001095289923432,  'val_raw': 11,  'vertex': False},
+            {'eqn_fit': (0.0054764496171133877, -3.0021863810355005),  'eqn_right': (0.0054764496171133877, -3.0021863810355005),  'index_date': '2018-12-31',  'index_day': 2922,  'spike': False,  'val_fit': 12.99999940016982,  'val_raw': 13,  'vertex': False},
+            {'eqn_fit': (0.0054764496171133877, -3.0021863810355005),  'eqn_right': (0.0054764496171133877, -3.0021863810355005),  'index_date': '2019-12-31',  'index_day': 3287,  'spike': False,  'val_fit': 14.998903510416206,  'val_raw': 15,  'vertex': True}
         ]
-        self.assertEquals(utils.analyze(values, line_cost), expected_out)
+
+        self.assertEquals(
+            list(utils.analyze(values, line_cost)), 
+            expected_out
+        )
 
