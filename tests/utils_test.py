@@ -163,6 +163,7 @@ class AnalysisTestCase(unittest.TestCase):
         )
 
     def test_analyze_simple(self):
+        self.maxDiff = None
         line_cost = 2
         values = [
             {'date': '2010-12-31', 'val': 1},

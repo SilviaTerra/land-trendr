@@ -25,4 +25,5 @@ Running on EMR
 
 Running tests
 -------------
-    nosetests
+    ./run_tests.sh
+
