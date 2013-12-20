@@ -25,4 +25,4 @@ Running on EMR
 
 Running tests
 -------------
-    nosetest
+    nosetests
