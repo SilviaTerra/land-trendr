@@ -60,3 +60,4 @@ class MRLandTrendrJob(MRJob):
 
 if __name__ == '__main__':
     MRLandTrendrJob.run()
+

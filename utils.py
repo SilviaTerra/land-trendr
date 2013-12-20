@@ -1,9 +1,7 @@
-import os
-
 ###############################
 # Compression / Decompression
 ###############################
-
+import os
 import shutil
 import tarfile
 import zipfile
@@ -41,6 +39,7 @@ def decompress(filename, out_dir='/tmp/decompressed'):
 # String parsing
 #################################
 from datetime import datetime
+import re 
 
 def parse_date(date_string):
     """
@@ -59,8 +58,6 @@ def filename2date(fn):
     fn, _ = os.path.splitext(fn)
     scene_id, y, m, d = os.path.basename(fn).split('_')
     return '%s-%s-%s' % (y, m, d)
-
-import re 
 
 def parse_eqn_bands(eqn):
     """
@@ -84,7 +81,6 @@ def multiple_replace(string, replacements):
 ####################
 # Raster Read/Write
 ####################
-
 from osgeo import gdal
 
 def ds2array(ds, band=1):
@@ -134,7 +130,7 @@ def array2raster(array, template_rast_fn, out_fn=None, no_data_val=None, data_ty
     
     out_band.WriteArray(array, 0, 0)
     
-    #georeference image
+    # georeference image
     out_ds.SetGeoTransform(template_ds.GetGeoTransform())
     out_ds.SetProjection(template_ds.GetProjection())
 
@@ -147,7 +143,7 @@ def serialize_rast(rast_fn, extra_data={}):
     returns an iterator that generates lines in the format:
         "<pt_wkt>", {'val':<val>, <extra_key1>:<extra_val1>, ...}
     """
-    gdal.UseExceptions() #enable exception-throwing by GDAL
+    gdal.UseExceptions() # enable exception-throwing by GDAL
 
     ds = gdal.Open(rast_fn)
     num_pix_wide, num_pix_high = ds.RasterXSize, ds.RasterYSize
@@ -160,7 +156,7 @@ def serialize_rast(rast_fn, extra_data={}):
         x = top_left_x + (xoff + 0.5) * pix_width # +0.5 to get center x
         for yoff in xrange(num_pix_high):
             y = top_left_y + (yoff + 0.5) * pix_height # +0.5 to get center y
-            val = pixvals[yoff, xoff] #careful!  math matrix uses yoff, xoff
+            val = pixvals[yoff, xoff] # careful!  math matrix uses yoff, xoff
             pt_wkt = 'POINT(%s %s)' % (x, y)
             pt_data = {'val': float(val)}
             pt_data.update(extra_data)
@@ -169,8 +165,7 @@ def serialize_rast(rast_fn, extra_data={}):
 ##################
 # Raster algebra
 ##################
-
-import numpy as np #referenced in eval code
+import numpy as np # referenced in eval code
 
 def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/rast_algebra.tif'):
     """
@@ -180,7 +175,7 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/ras
 
     create a new raster with the equation applied to it
     """
-    gdal.UseExceptions() #enable exception-throwing by GDAL
+    gdal.UseExceptions() # enable exception-throwing by GDAL
     
     ds = gdal.Open(rast_fn)
     if not no_data_val:
@@ -196,7 +191,7 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/ras
     if min_band <= 0:
         raise Exception('Invalid band "%s" - bands must be >= 1')
 
-    #bands is referenced in the modified equations
+    # bands is referenced in the modified equations
     bands = dict([(b, ds2array(ds, b)) for b in all_bands])
     
     band_replace = dict([('B%s' %b, 'bands[%s]' % b) for b in all_bands])
@@ -215,7 +210,6 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/ras
 #############
 # Analysis
 #############
-
 import pandas as pd
 
 def timeseries2int_series(time_series):
@@ -253,14 +247,14 @@ def despike(time_series):
 
     Outputs a modified series with nulled out outliers
     """
-    std_dev = np.std(time_series) #standard deviation
+    std_dev = np.std(time_series) # standard deviation
     triples = [time_series[i:i+3] for i in range(0, len(time_series)-2)]
     despiked = []
-    despiked.append(time_series[0]) #first not an outlier
+    despiked.append(time_series[0]) # first not an outlier
     last_good = time_series[0]
     for x, y, z in triples:
-        #If x and z are on same side of y (both above or both below)
-        #and both x and z are more than a std_dev away...
+        # If x and z are on same side of y (both above or both below)
+        # and both x and z are more than a std_dev away...
         if not ((x <= y <= z) or (x >= y >= z)) and \
                 ((abs(y-x) > std_dev) and (abs(y-z) > std_dev)) and \
                 y != last_good:
@@ -268,7 +262,7 @@ def despike(time_series):
         else:
             despiked.append(y)
             last_good = y
-    despiked.append(time_series[-1]) #last not an outlier
+    despiked.append(time_series[-1]) # last not an outlier
     return pd.Series(data=despiked, index=time_series.index.values)
 
 def least_squares(series):
@@ -279,13 +273,13 @@ def least_squares(series):
     Return:
         (m, c), sum_residuals
     """
-    series = series.dropna() #clean out any NaN vals
+    series = series.dropna() # clean out any NaN vals
     x, y = series.index.values, series.values 
     A = np.vstack([x, np.ones(len(x))]).T
     solution = np.linalg.lstsq(A, y)
     m, c = solution[0]
     sum_residuals = np.sum(solution[1])
-    return (m, c), sum_residuals #TODO double check this with zack
+    return (m, c), sum_residuals
 
 def segmented_least_squares(series, line_cost):
     """
@@ -295,29 +289,29 @@ def segmented_least_squares(series, line_cost):
         * num_lines * line_cost
     Return the series indices of the endpoints of the lines
     """
-    series = series.dropna() #remove any NaN vals
+    series = series.dropna() # remove any NaN vals
     n = len(series)
     
-    e = dict([(i, {}) for i in range(n)]) #errors (residuals) 
-    #format: {
-    #   <start_x>: {<end_x>: <resid>, <end_x+1>: <resid>, ...}, 
-    #   ...
-    #}
+    e = dict([(i, {}) for i in range(n)]) # errors (residuals) 
+    # format: {
+    #    <start_x>: {<end_x>: <resid>, <end_x+1>: <resid>, ...}, 
+    #    ...
+    # }
     
-    #calculate least squares between all points
+    # calculate least squares between all points
     for j in range(0, n):
         for i in range(0, j+1):
             e[i][j] = 0 if i == j else least_squares(series[i:j+1])[1]
 
-    #calculate optimal cost for each step
+    # calculate optimal cost for each step
     OPT = {-1: 0}
     for j in range(0, n):
         vals = [(e[i][j] + line_cost + OPT[i-1]) for i in range(0, j+1)]
         OPT[j] = min(vals)
 
-    #unfurl the optimal segments backwards to find the segments
+    # unfurl the optimal segments backwards to find the segments
     list_indices = find_segments(n-1, e, line_cost, OPT) 
-    list_indices += [n-1] #last index always in
+    list_indices += [n-1] # last index always in
     return [series.index.values[x] for x in list_indices]
 
 def find_segments(j, e, c, OPT):
@@ -345,16 +339,16 @@ def vertices2eqns(series, is_vertex):
     vertices = series[is_vertex]
     v_idx = vertices.index
     vertex_pairs = [v_idx[i:i+2] for i in range(len(vertices)-1)]
-    vertex_eqns = dict([ #format {<vertex_label>: <(m,c)>, ...}
+    vertex_eqns = dict([ # format {<vertex_label>: <(m,c)>, ...}
         (v1, least_squares(series.loc[v1:v2])[0]) for v1, v2 in vertex_pairs
     ])
-    #set last vertex eqn to the second to last vertex eqn
+    # set last vertex eqn to the second to last vertex eqn
     vertex_eqns[v_idx[-1]] = vertex_eqns[v_idx[-2]] 
 
     eqns, curr_eqn = [], None
     for i, is_v in zip(series.index, is_vertex):
         if is_v:
-            curr_eqn = vertex_eqns[i] or curr_eqn #defaults to curr_eqn if last vertex
+            curr_eqn = vertex_eqns[i] or curr_eqn # defaults to curr_eqn if last vertex
         eqns.append(curr_eqn)
     return pd.Series(data=eqns, index=series.index)
 
@@ -368,21 +362,21 @@ def analyze(values, line_cost):
     ]
     Run a bunch of analysis on it to do change labeling
     """
-    #convert to time series 
+    # convert to time series 
     ts = dict2timeseries(values)
 
-    #despike
+    # despike
     despiked = despike(ts)
     is_spike = pd.isnull(despiked)
 
-    #convert from time series to int series (for least squares)
+    # convert from time series to int series (for least squares)
     int_series = timeseries2int_series(despiked)
 
-    #get vertices
+    # get vertices
     vertices = segmented_least_squares(int_series, line_cost)
     is_vertex = [x in vertices for x in int_series.index]
 
-    #TODO calculate fitted values
+    # TODO calculate fitted values
     fitted = [0] * len(values)
 
     output = []
