@@ -157,10 +157,11 @@ class AnalysisTestCase(unittest.TestCase):
         )
 
     def test_least_squares(self):
-        self.assertEquals(
-           utils.least_squares(pd.Series([1, 2.1, 3, 4.4, 4.7])),
-           ((0.96999999999999997, 1.1000000000000008), 0.24300000000000019)
-        )
+        (m, c), sum_residuals = utils.least_squares(pd.Series([1, 2.1, 3, 4.4, 4.7]))
+
+        self.assertAlmostEqual(m, 0.96999999999999997)
+        self.assertAlmostEqual(c, 1.1000000000000008)
+        self.assertAlmostEqual(sum_residuals, 0.24300000000000019)
 
     def test_segmented_least_squares(self):
         s1 = pd.Series([0, 0, 0, 1, 2, 3])
@@ -186,9 +187,8 @@ class AnalysisTestCase(unittest.TestCase):
             (1.0000000000000002, -2.0000000000000031)
         ]
 
-        self.assertTrue(
-            np.all(utils.vertices2eqns(s, v) == expected)
-        )
+        for actual_value, expected_value in zip(utils.vertices2eqns(s, v), expected):
+            np.testing.assert_almost_equal(actual_value, expected_value)
 
     def test_apply_eqn(self):
         self.assertEquals(utils.apply_eqn(5, (3, 2)), 17)
@@ -214,6 +214,19 @@ class AnalysisTestCase(unittest.TestCase):
     def test_get_idx(self):
         self.assertEquals(utils.get_idx(['a','b','c'], 1), 'b')
         self.assertEquals(utils.get_idx(pd.Series(['a','b','c']), 1), 'b')
+
+
+    def assertAnalyzeEqual(self, line_cost, values, expected_out):
+        for actual, expected in zip(list(utils.analyze(values, line_cost)), expected_out):
+            self.assertEqual(sorted(actual.keys()), sorted(expected.keys()))
+
+            for actual_key, actual_value in actual.items():
+                expected_value = expected[actual_key]
+
+                if actual_key.startswith('eqn'):
+                    np.testing.assert_almost_equal(actual_value, expected_value)
+                else:
+                    self.assertAlmostEqual(actual_value, expected_value)
 
     def test_analyze_simple(self):
         line_cost = 2
@@ -242,10 +255,7 @@ class AnalysisTestCase(unittest.TestCase):
             {'eqn_fit': (0.0054760218598211806, -3.0009885655254509),  'eqn_right': (0.0054760218598211806, -3.0009885655254509),  'index_date': '2019-12-31',  'index_day': 3287,  'spike': False,  'val_fit': 14.99869528770677,  'val_raw': 15,  'vertex': True}
         ]
         
-        self.assertEquals(
-            list(utils.analyze(values, line_cost)), 
-            expected_out
-        )
+        self.assertAnalyzeEqual(line_cost, values, expected_out)
 
     def test_analyze_simple_spike(self):
         line_cost = 2
@@ -275,8 +285,4 @@ class AnalysisTestCase(unittest.TestCase):
             {'eqn_fit': (0.0054764496171133877, -3.0021863810355005),  'eqn_right': (0.0054764496171133877, -3.0021863810355005),  'index_date': '2019-12-31',  'index_day': 3287,  'spike': False,  'val_fit': 14.998903510416206,  'val_raw': 15,  'vertex': True}
         ]
 
-        self.assertEquals(
-            list(utils.analyze(values, line_cost)), 
-            expected_out
-        )
-
+        self.assertAnalyzeEqual(line_cost, values, expected_out)
