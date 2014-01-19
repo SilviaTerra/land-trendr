@@ -475,32 +475,7 @@ def analyze(pix_datas, line_cost):
 #######################
 def change_labeling(pix_trendline, label_rules):
     """
-    Where pix_trendline is in the format:
-    [
-        {
-            'val_raw': ts.values, 
-            'val_fit': vals_fit, 
-            'eqn_fit': eqns_fit,
-            'eqn_right': eqns_right,
-            'index_date': formatted_dates, 
-            'index_day': int_series.index, 
-            'spike': is_spike, 
-            'vertex': is_vertex
-        }, ...
-    ]
-
-    and label_rules is in the format:
-
-    {
-        <label_name>: {
-            'class_val': X, # REQUIRED
-            'class_name': X, # REQUIRED
-            'change_type': X,
-            'onset_year': (val, qualifier),
-            'duration': (val, qualifier),
-            'pre_disturbance_threshold': (val, qualifier)
-        }, ...
-    }
+    Given a Trendline and a list of LabelRules
 
     For each label, determine if the pixel matches.  If so, output:
     {
@@ -512,65 +487,16 @@ def change_labeling(pix_trendline, label_rules):
         }, ...
     }
     """
-    # Get metrics for all disturbances (segments between vertices in trendline)
-    disturbances = pix_trendline.parse_disturbances()
-    
     labels = {}
     for rule in label_rules:
         print 'Checking rule %s' % rule.name
-        # Filter by year_onset, duration, and pre_disturbance_threshold
-        matching_disturbances = []
-        for d in disturbances:
-            match = True
-
-            if rule.onset_year:
-                qualifier, yr = rule.onset_year
-                if qualifier == '=' and d.onset_year != yr:
-                    match = False
-                elif qualifier == '<=' and d.onset_year > yr:
-                    match = False
-                elif qualifier == '>=' and d.onset_year < yr:
-                    match = False
-
-            if rule.duration:
-                qualifier, yr_length = rule.duration
-                if qualifier == '>' and d.duration <= yr_length:
-                    match = False
-                elif qualifier == '<' and d.duration >= yr_length:
-                    match = False
-
-            if rule.pre_threshold:
-                qualifier, threshold = rule.threshold
-                if qualifier == '>' and d.initial_val <= threshold:
-                    match = False
-                elif qualifier == '<' and d.initial_val >= threshold:
-                    match = False
-
-            if match:
-                matching_disturbances.append(d)
-
-        # Pick winner by change type
-        winner = None
-        for d in matching_disturbances:
-            if winner is None:
-                winner = d
-            else:
-                if rule.change_type == 'FD':
-                    if d.onset_year < winner.onset_year:
-                        winner = d
-                elif rule.change_type == 'GD':
-                    if d.magnitude > winner.magnitude:
-                        winner = d
-                elif rule.change_type == 'LD':
-                    if d.duration > winner.duration:
-                        winner = d
-        
-        labels[rule.name] = {
-            'class_val': rule.val,
-            'onset_year': winner.onset_year,
-            'magnitude': winner.magnitude, 
-            'duration': winner.duration
-        }
-        
+        match = pix_trendline.match_rule(rule)
+        if match:
+            labels[rule.name] = {
+                'class_val': rule.val,
+                'onset_year': match.onset_year,
+                'magnitude': match.magnitude, 
+                'duration': match.duration
+            }
 
     return labels
