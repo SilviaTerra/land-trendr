@@ -415,6 +415,7 @@ def get_idx(array_like, idx):
     else:
         return array_like[idx]
 
+from classes import Trendline, TrendlinePoint
 def analyze(pix_datas, line_cost):
     """
     Given data in the format:
@@ -425,15 +426,7 @@ def analyze(pix_datas, line_cost):
     ]
     Run a bunch of analysis on it to do change labeling
 
-    Returns a generator where each item is a dict with the following keys:
-        'val_raw'
-        'val_fit'
-        'eqn_fit'
-        'eqn_right'
-        'index_date'
-        'index_day'
-        'spike'
-        'vertex'
+    Returns a Trendline
     """
     # convert to time series 
     ts = dicts2timeseries(pix_datas)
@@ -466,17 +459,20 @@ def analyze(pix_datas, line_cost):
         'spike': is_spike, 
         'vertex': is_vertex
     }
+    trendline_points = []
     for i in range(ts.size):
-        yield dict([
+        kwargs = dict([
             (key, get_idx(series, i)) 
             for key, series in outs.iteritems()
         ])
+        trendline_points.append(TrendlinePoint(**kwargs))
+    
+    return Trendline(trendline_points)
 
 
 #######################
 ### Change Labeling ###
 #######################
-
 def change_labeling(pix_trendline, label_rules):
     """
     Where pix_trendline is in the format:
@@ -517,22 +513,64 @@ def change_labeling(pix_trendline, label_rules):
     }
     """
     # Get metrics for all disturbances (segments between vertices in trendline)
+    disturbances = pix_trendline.parse_disturbances()
     
     labels = {}
     for rule in label_rules:
-        name = rule['class_name']
-        print 'Checking rule %s' % name
+        print 'Checking rule %s' % rule.name
         # Filter by year_onset, duration, and pre_disturbance_threshold
+        matching_disturbances = []
+        for d in disturbances:
+            match = True
+
+            if rule.onset_year:
+                qualifier, yr = rule.onset_year
+                if qualifier == '=' and d.onset_year != yr:
+                    match = False
+                elif qualifier == '<=' and d.onset_year > yr:
+                    match = False
+                elif qualifier == '>=' and d.onset_year < yr:
+                    match = False
+
+            if rule.duration:
+                qualifier, yr_length = rule.duration
+                if qualifier == '>' and d.duration <= yr_length:
+                    match = False
+                elif qualifier == '<' and d.duration >= yr_length:
+                    match = False
+
+            if rule.pre_threshold:
+                qualifier, threshold = rule.threshold
+                if qualifier == '>' and d.initial_val <= threshold:
+                    match = False
+                elif qualifier == '<' and d.initial_val >= threshold:
+                    match = False
+
+            if match:
+                matching_disturbances.append(d)
 
         # Pick winner by change type
+        winner = None
+        for d in matching_disturbances:
+            if winner is None:
+                winner = d
+            else:
+                if rule.change_type == 'FD':
+                    if d.onset_year < winner.onset_year:
+                        winner = d
+                elif rule.change_type == 'GD':
+                    if d.magnitude > winner.magnitude:
+                        winner = d
+                elif rule.change_type == 'LD':
+                    if d.duration > winner.duration:
+                        winner = d
         
-        labels[name] = True  # TODO
+        labels[rule.name] = {
+            'class_val': rule.val,
+            'onset_year': winner.onset_year,
+            'magnitude': winner.magnitude, 
+            'duration': winner.duration
+        }
         
 
     return labels
-
-def parse_disturbances():
-    """
-    
-    """
-    pass

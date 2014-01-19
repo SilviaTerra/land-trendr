@@ -57,3 +57,42 @@ class LabelRule:
             else:
                 setattr(self, param_name, None)
 
+class TrendlinePoint:
+    """
+
+    """
+    def __init__(self, val_raw, val_fit, eqn_fit, eqn_right, index_date,
+                 index_day, spike, vertex)
+        self.val_raw = val_raw
+        self.val_fit = val_fit
+        self.eqn_fit = eqn_fit
+        self.eqn_right = eqn_right
+        self.index_date = index_date
+        self.index_day = index_day
+        self.spike = spike
+        self.vertex = vertex
+
+class Trendline:
+    """
+    Represents a processed LandTrendr trendline
+    """
+    def __init__(self, points):
+        self.points = points
+
+    def parse_disturbances(self):
+        """
+
+        """
+        pass
+
+class Disturbance:
+    """
+    Represents a disturance with an onset_year, initial_val, magnitude, and duration
+    """
+    def __init__(self, onset_year, initial_val, magnitude, duration):
+        self.onset_year = onset_year
+        self.initial_val = initial_val
+        self.magnitude = magnitude
+        self.duration = duration
+
+
