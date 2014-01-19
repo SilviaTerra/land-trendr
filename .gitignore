@@ -2,7 +2,7 @@
 
 # Unsaved files
 *~
-*.swp
+*.sw*
 
 # C extensions
 *.so

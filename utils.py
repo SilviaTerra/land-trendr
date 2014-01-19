@@ -165,7 +165,7 @@ def serialize_rast(rast_fn, extra_data={}):
 ##################
 # Raster algebra
 ##################
-import numpy as np # referenced in eval code
+import numpy as np  # referenced in eval code
 
 def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/rast_algebra.tif'):
     """
@@ -472,3 +472,67 @@ def analyze(pix_datas, line_cost):
             for key, series in outs.iteritems()
         ])
 
+
+#######################
+### Change Labeling ###
+#######################
+
+def change_labeling(pix_trendline, label_rules):
+    """
+    Where pix_trendline is in the format:
+    [
+        {
+            'val_raw': ts.values, 
+            'val_fit': vals_fit, 
+            'eqn_fit': eqns_fit,
+            'eqn_right': eqns_right,
+            'index_date': formatted_dates, 
+            'index_day': int_series.index, 
+            'spike': is_spike, 
+            'vertex': is_vertex
+        }, ...
+    ]
+
+    and label_rules is in the format:
+
+    {
+        <label_name>: {
+            'class_val': X, # REQUIRED
+            'class_name': X, # REQUIRED
+            'change_type': X,
+            'onset_year': (val, qualifier),
+            'duration': (val, qualifier),
+            'pre_disturbance_threshold': (val, qualifier)
+        }, ...
+    }
+
+    For each label, determine if the pixel matches.  If so, output:
+    {
+        <label_name>: {
+            'class_val': X,
+            'onset_year': X,
+            'magnitude': X, 
+            'duration': X
+        }, ...
+    }
+    """
+    # Get metrics for all disturbances (segments between vertices in trendline)
+    
+    labels = {}
+    for rule in label_rules:
+        name = rule['class_name']
+        print 'Checking rule %s' % name
+        # Filter by year_onset, duration, and pre_disturbance_threshold
+
+        # Pick winner by change type
+        
+        labels[name] = True  # TODO
+        
+
+    return labels
+
+def parse_disturbances():
+    """
+    
+    """
+    pass

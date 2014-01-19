@@ -7,6 +7,7 @@ from mr_land_trendr_job import MRLandTrendrJob
 
 DEPENDENCIES_TARFILE = '/tmp/landtrendr_dependencies.tar.gz'
 DEPENDENCIES = [
+    'classes.py',
     'utils.py',
 ]
 
@@ -24,6 +25,7 @@ S3_REGEX = re.compile('s3://([\w\-]+)/([\w\-\./]+)')
 INPUT_FILE = 'input.txt'
 LOCAL_INPUT_FILE = '/tmp/%s' % INPUT_FILE
 
+
 def add_bootstrap_cmds():
     connection = boto.connect_s3()
 
@@ -33,6 +35,7 @@ def add_bootstrap_cmds():
         'echo aws_secret_access_key = %s | sudo tee -a /etc/boto.cfg' % connection.secret_key
     ]
 
+
 def bundle_dependencies():
     tar = tarfile.open(DEPENDENCIES_TARFILE, 'w:gz')
 
@@ -40,6 +43,7 @@ def bundle_dependencies():
         tar.add(fn)
 
     tar.close()
+
 
 def create_input_file(platform, input_bucket, input_path):
     connection = boto.connect_s3()
@@ -61,6 +65,7 @@ def create_input_file(platform, input_bucket, input_path):
         key.set_contents_from_string(contents)
     
         return 's3://%s/%s' % (input_bucket, input_key)
+
 
 def main(platform, input_bucket, input_path, index_eqn=None, output=None):
     if not index_eqn:
