@@ -23,6 +23,10 @@ If you're getting errors importing gdal/osgeo, try:
     # OSX
     ln -s /Library/Frameworks/GDAL.framework/Versions/1.10/Python/2.7/site-packages/osgeo $VIRTUAL_ENV/lib/python2.7/site-packages/.
 
+    # or
+    pip install --no-install gdal
+    cd $VIRTUAL_ENV/build/gdal
+    python setup.py build_ext --library-dirs=/Library/Frameworks/GDAL.framework/Versions/Current/unix/lib --include-dirs=/Library/Frameworks/GDAL.framework/Versions/Current/unix/include install
 
 Running locally
 ---------------
