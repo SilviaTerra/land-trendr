@@ -21,7 +21,6 @@ class LabelRuleTestCase(unittest.TestCase):
                           duration=['<', 4, 'BAD'])
 
 
-
 class TrendLineTestCase(unittest.TestCase):
 
     def test_match(self):
@@ -46,5 +45,3 @@ class TrendLineTestCase(unittest.TestCase):
         self.assertAlmostEqual(match.initial_val, 10.999178383)
         self.assertAlmostEqual(match.magnitude, 6.3993420469846)
         self.assertEqual(match.duration, 3)
-        
-

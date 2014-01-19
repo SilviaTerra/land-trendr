@@ -4,7 +4,7 @@ import shutil
 
 from mrjob.job import MRJob
 
-import utils
+import utils, classes
 
 DOWNLOAD_DIR = '/mnt/vol'
 
@@ -46,34 +46,37 @@ class MRLandTrendrJob(MRJob):
         """
         Given a point wkt and a list of pix datas in the format:
         [
-            {'date': '2011-09-01', 'val': 160.0}, 
+            {'date': '2011-09-01', 'val': 160.0},
             {'date': '2012-09-01', 'val': 180.0},
             ...
         ]
         perform the landtrendr analysis and change labeling.
 
-        Return the point_wkt and a "trendline" that contains
-        a list of dictionaries (in chronological order) with tons of data 
-        about the pixel at each date.
+        Return the point_wkt and a dictionary of "change labels" that match
+        the generated trendline.
         """
         pix_trendline = list(utils.analyze(pix_datas, self.line_cost))
-        # TODO change labeling 
-        yield point_wkt, pix_trendline
+        
+        # TODO get change label rules 
+        label_rules = [
+            classes.LabelRule('greatest_fast_disturbance', 3, 'GD'),
+        ]
+        
+        change_labels = utils.change_labeling(pix_trendline, label_rules)
+        yield point_wkt, change_labels
 
-    def date_mapper(self, point_wkt, pix_trendline):
+    def label_mapper(self, point_wkt, change_labels):
         """
-        Given all the trendline data for a particular pixel,
-        split all the data by date and output a 
-        date/pixel_data pair for each date within the trendline.
+        Given all the change labels and metadata for a particular pixel,
+        Split all the pixels by label and type (e.g. onset_year)
         """
-        for pix_data in pix_trendline:
-            date = pix_data.pop('date')
-            pix_data['point_wkt'] = point_wkt
-            yield date, pix_data
+        for label_name, data in change_labels.iteritems():
+            for key in ['class_val', 'onset_year', 'magnitude', 'duration']:
+                label_key = '%s_%s' % (label_name, key)
+                yield label_key, {'pix_ctr_wkt': point_wkt, 'value': data[key]}
 
-    def maps_reducer(self, date, pixel_datas):
+    def mapping_reducer(self, label_key, pix_datas):
         """
-        Given all the pixel datas for a particular date, 
         fill the data in to a raster image and return the 
         names of the generated images
         """
@@ -84,7 +87,7 @@ class MRLandTrendrJob(MRJob):
     def steps(self):
         return [
             self.mr(mapper=self.parse_mapper, reducer=self.analysis_reducer),
-            self.mr(mapper=self.date_mapper, reducer=self.maps_reducer)
+            self.mr(mapper=self.label_mapper, reducer=self.mapping_reducer)
         ]
     
     def job_runner_kwargs(self):
