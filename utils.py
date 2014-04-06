@@ -1,3 +1,5 @@
+import settings as s
+
 ###############################
 # Compression / Decompression
 ###############################
@@ -51,10 +53,6 @@ def decompress(filename, out_dir='/tmp/decompressed'):
 #######
 import boto
 
-# TODO move these to settings
-S3_BUCKET = 'land-trendr'
-WORK_DIR = '/mnt/vol'
-
 def keyname2filename(keyname):
     """
     Given a keyname, convert it to a filename on the local machine.
@@ -62,7 +60,7 @@ def keyname2filename(keyname):
     Note: just returns a string, doesn't actually download the file
     """
     return os.path.join(
-        WORK_DIR, keyname.replace(os.path.sep, '__')
+        s.WORK_DIR, keyname.replace(os.path.sep, '__')
     )
 
 
@@ -72,7 +70,7 @@ def get_keys(prefix):
     or [] if there are no such S3 objects
     """
     conn = boto.connect_s3()
-    bucket = conn.get_bucket(S3_BUCKET)
+    bucket = conn.get_bucket(s.S3_BUCKET)
     for k in bucket.list(prefix=prefix):
         if k.key.endswith('/'):
             continue  # skip directories
@@ -135,11 +133,11 @@ def upload(filenames, replacements={}):
     """
     keys = []
     conn = boto.connect_s3()
-    bucket = conn.get_bucket(S3_BUCKET)
+    bucket = conn.get_bucket(s.S3_BUCKET)
 
     replacements.update({
         '__': '/',
-        os.path.join(WORK_DIR, ''):  ''
+        os.path.join(s.WORK_DIR, ''):  ''
     })
 
     for filename in filenames:

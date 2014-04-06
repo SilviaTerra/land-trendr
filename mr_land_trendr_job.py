@@ -3,10 +3,9 @@ import shutil
 
 from mrjob.job import MRJob
 
+import settings as s
 import utils
 import classes
-
-CLEANUP = False  # TODO settings
 
 
 class MRLandTrendrJob(MRJob):
@@ -35,11 +34,10 @@ class MRLandTrendrJob(MRJob):
         """
         s3_bucket, s3_key = line.split('\t')
         rast_zip_fn = utils.get_file(s3_key)
-        rast_fn = utils.decompress(rast_zip_fn)[0]
+        rast_fn = utils.decompress(rast_zip_fn)[0]  #TODO to a named dir
         datestring = utils.filename2date(rast_fn)
         index_rast = utils.rast_algebra(rast_fn, self.index_eqn)
-        if CLEANUP:
-            shutil.rmtree(os.path.dirname(rast_fn))
+        shutil.rmtree(os.path.dirname(rast_fn))
         pix_generator = utils.serialize_rast(index_rast, {'date': datestring})
         for point_wkt, pix_data in pix_generator:
             yield point_wkt, pix_data
@@ -83,12 +81,13 @@ class MRLandTrendrJob(MRJob):
         names of the generated images
         """
         # download a template raster
-        RAST_KEYNAME = 'TEMPLATE_RAST.tif'  # TODO dynamic
-        template_rast = utils.get_file(RAST_KEYNAME)
+        s3dir = os.path.dirname(s.IN_RAST_KEYNAME % (self.job, 'dummy'))
+        template_key = utils.get_keys(s3dir)[0]
+        template_rast = utils.get_file(template_key)
 
         # write data to raster
-        RASTER = '%s/output/rasters/%s.tif'  # % (job, label)  # TODO settings
-        rast_fn = RASTER % (self.job, label_key)
+        rast_key = s.OUT_RAST_KEYNAME % (self.job, label_key)
+        rast_fn = utils.keyname2filename(rast_key)
         utils.data2raster(pix_datas, template_rast, out_fn=rast_fn)
         compressed = utils.compress([rast_fn], '%s.zip' % rast_fn)
 
