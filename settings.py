@@ -1,7 +1,7 @@
 INPUT_FILE = 'input.txt'
 
 WORK_DIR = '/mnt/vol'
-S3_BUCKET = 'land-trendr'
+S3_BUCKET = 'silviaterra-landtrendr'
 
 IN_EMR_KEYNAME = '%s/input/emr_input.txt'  # % job
 IN_SETTINGS = '%s/input/settings.json'  # % job
