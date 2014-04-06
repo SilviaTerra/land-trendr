@@ -2,6 +2,8 @@ class LabelRule:
     """
     Rules for labeling a trendline.
 
+    Takes in an "options" dictionary with the following keys:
+
     name and val are the name and integer code for the label
 
     change_type is the type of disturbance we're looking for.  Options are:
@@ -27,21 +29,26 @@ class LabelRule:
         < - less than
     """
 
-    def __init__(self, name, val, change_type=None,
-                 onset_year=None, duration=None, pre_threshold=None):
+    def __init__(self, options):
 
+        name = options.get('name')
         if not name:
             raise ValueError('name required')
         self.name = name
 
+        val = options.get('val')
         if not val:
             raise ValueError('val required')
         self.val = val
 
+        change_type = options.get('change_type')
         if change_type not in ['FD', 'GD', 'LD', None]:
             raise ValueError('Invalid change_type: %s' % change_type)
         self.change_type = change_type
 
+        onset_year = options.get('onset_year')
+        duration = options.get('duration')
+        pre_threshold = options.get('pre_threshold')
         for param_name, param_val in zip(
                 ['onset_year', 'duration', 'pre_threshold'],
                 [onset_year, duration, pre_threshold]):

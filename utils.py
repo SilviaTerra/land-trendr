@@ -205,6 +205,12 @@ def multiple_replace(string, replacements):
     return pattern.sub(lambda x: replacements[x.group()], string)
 
 ####################
+# Job Settings
+####################
+def get_settings(job):
+    return read_json(s.IN_SETTINGS % job)
+
+####################
 # Raster Read/Write
 ####################
 import numpy as np  

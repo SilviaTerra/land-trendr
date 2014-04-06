@@ -75,18 +75,19 @@ def main(platform, job):
     else:
         emr_job_runner_kwargs = {}
 
-    job = MRLandTrendrJob(
+    j = MRLandTrendrJob(
+        lt_job=job
         args=args,
         job_runner_kwargs=job_runner_kwargs,
         emr_job_runner_kwargs=emr_job_runner_kwargs
     )
 
-    with job.make_runner() as runner:
+    with j.make_runner() as runner:
         runner.run()
 
         if platform != 'emr':
             for line in runner.stream_output():
-                print job.parse_output_line(line)
+                print j.parse_output_line(line)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run a LandTrendr job')
