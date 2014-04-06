@@ -52,6 +52,7 @@ def decompress(filename, out_dir='/tmp/decompressed'):
 # AWS 
 #######
 import boto
+import json
 
 def keyname2filename(keyname):
     """
@@ -76,7 +77,6 @@ def get_keys(prefix):
             continue  # skip directories
         yield k
 
-
 def download(keys):
     filenames = []
 
@@ -86,7 +86,6 @@ def download(keys):
         filenames.append(filename)
 
     return filenames
-
 
 def get_files(prefix):
     """
@@ -126,6 +125,19 @@ def get_file(keyname):
         download([to_dl])
     return fn
 
+def read_json(keyname):
+    """
+    Read a JSON file from S3 and return the python object
+    """
+    keys = list(get_keys(keyname))
+    num_keys = len(keys)
+    if num_keys == 1:
+        key = keys[0]
+        return json.loads(key.get_contents_as_string())
+    elif num_keys == 0:
+        raise Exception('File with key %s does not exist' % keyname)
+    else:
+        raise Exception('More than one file with prefix %s' % keyname)
 
 def upload(filenames, replacements={}):
     """
