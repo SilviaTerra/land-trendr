@@ -6,6 +6,16 @@ import shutil
 import tarfile
 import zipfile
 
+def compress(fns, out_fn='/tmp/compressed.zip'):
+    """
+    Given a list of files
+    """
+    zf = zipfile.ZipFile(out_fn, 'w')
+    for fn in fns:
+        zf.write(zf, os.pat.basename(fn), zipfile.ZIP_DEFLATED)
+    zf.close()
+    return out_fn
+
 def decompress(filename, out_dir='/tmp/decompressed'):
     """
     Given a tar.gz or a zip, extract the contents and return a list of files.
@@ -33,7 +43,113 @@ def decompress(filename, out_dir='/tmp/decompressed'):
         if del_dir:
             shutil.rmtree(out_dir)
     
-    return [os.path.join(out_dir, fn) for fn in os.listdir(out_dir)]
+    return [os.path.join(out_dir, f) for f in os.listdir(out_dir)]
+
+
+#######
+# AWS 
+#######
+import boto
+
+# TODO move these to settings
+S3_BUCKET = 'land-trendr'
+WORK_DIR = '/mnt/vol'
+
+def keyname2filename(keyname):
+    """
+    Given a keyname, convert it to a filename on the local machine.
+
+    Note: just returns a string, doesn't actually download the file
+    """
+    return os.path.join(
+        WORK_DIR, keyname.replace(os.path.sep, '__')
+    )
+
+
+def get_keys(prefix):
+    """
+    returns the keys of all S3 objects with that prefix
+    or [] if there are no such S3 objects
+    """
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(S3_BUCKET)
+    for k in bucket.list(prefix=prefix):
+        if k.key.endswith('/'):
+            continue  # skip directories
+        yield k
+
+
+def download(keys):
+    filenames = []
+
+    for key in keys:
+        filename = keyname2filename(key.key)
+        key.get_contents_to_filename(filename)
+        filenames.append(filename)
+
+    return filenames
+
+
+def get_files(prefix):
+    """
+    Given an S3 prefix,
+    download and the files if they don't already exist
+    and return the filenames
+    """
+    to_download = []
+    fns = []
+    for k in get_keys(prefix):
+        fn = keyname2filename(k.key)
+        fns.append(fn)
+        if not os.path.exists(fn):
+            to_download.append(k)
+
+    download(to_download)
+    return fns
+
+
+def get_file(keyname):
+    """
+    Gets a single file from S3 and returns the local filename.
+    Throws an error if more than one match or zero matches.
+    """
+    fn, to_dl = None, None
+    i = -1
+    for i, k in enumerate(get_keys(keyname)):
+        if i == 1:
+            raise Exception('More than one key matches prefix "%s"' % keyname)
+        fn = keyname2filename(k.key)
+        if not os.path.exists(fn):
+            to_dl = k
+    if i == -1:
+        raise Exception('No key matches prefix "%s"' % keyname)
+
+    if to_dl:
+        download([to_dl])
+    return fn
+
+
+def upload(filenames, replacements={}):
+    """
+    Uploads a list of files to S3.  Converts "__" into "/"
+    """
+    keys = []
+    conn = boto.connect_s3()
+    bucket = conn.get_bucket(S3_BUCKET)
+
+    replacements.update({
+        '__': '/',
+        os.path.join(WORK_DIR, ''):  ''
+    })
+
+    for filename in filenames:
+        keyname = multiple_replace(filename, replacements)
+        key = bucket.new_key(keyname)
+        key.set_contents_from_filename(filename)
+        keys.append(key)
+
+    return keys
+
 
 #################################
 # String parsing
@@ -81,7 +197,31 @@ def multiple_replace(string, replacements):
 ####################
 # Raster Read/Write
 ####################
+import numpy as np  
 from osgeo import gdal
+
+NODATA = -99  # TODO settings
+
+### READ ###
+
+def get_pix_offsets_for_point(ds, lng, lat):
+    """
+    Given a raster datasource (from osgeo.gdal)
+    and lng/lat coordinates, return the x and y
+    pixel offsets required to get the pixel that
+    point is in.
+    
+    Note - this assumes that the point is within the datasource bounds
+    """
+    top_left_x, pix_width, _, top_left_y, _, pix_height = ds.GetGeoTransform()
+    
+    x_distance = lng - top_left_x
+    x_offset = int(x_distance * 1.0 / pix_width)
+    
+    y_distance = lat - top_left_y
+    y_offset = int(y_distance * 1.0 / pix_height) #pix_height is negative
+    
+    return x_offset, y_offset
 
 def ds2array(ds, band=1):
     """
@@ -95,7 +235,35 @@ def ds2array(ds, band=1):
         ))
     return ds.GetRasterBand(band).ReadAsArray(0, 0, num_pix_wide, num_pix_high)
 
-def array2raster(array, template_rast_fn, out_fn=None, no_data_val=None, data_type=None):
+def serialize_rast(rast_fn, extra_data={}):
+    """
+    Given a georeferenced raster filename,
+    and optionally a dictionary of extra data to include in each output,
+    returns an iterator that generates lines in the format:
+        "<pt_wkt>", {'val':<val>, <extra_key1>:<extra_val1>, ...}
+    """
+    gdal.UseExceptions()  # enable exception-throwing by GDAL
+
+    ds = gdal.Open(rast_fn)
+    num_pix_wide, num_pix_high = ds.RasterXSize, ds.RasterYSize
+    top_left_x, pix_width, x_rot, top_left_y, y_rot, pix_height = ds.GetGeoTransform()
+    
+    band = ds.GetRasterBand(1)
+    pixvals = band.ReadAsArray(0, 0, num_pix_wide, num_pix_high)
+    
+    for xoff in xrange(num_pix_wide):
+        x = top_left_x + (xoff + 0.5) * pix_width # +0.5 to get center x
+        for yoff in xrange(num_pix_high):
+            y = top_left_y + (yoff + 0.5) * pix_height # +0.5 to get center y
+            val = pixvals[yoff, xoff] # careful!  math matrix uses yoff, xoff
+            pt_wkt = 'POINT(%s %s)' % (x, y)
+            pt_data = {'val': float(val)}
+            pt_data.update(extra_data)
+            yield pt_wkt, pt_data
+
+### WRITE ###
+
+def array2raster(array, template_rast_fn, out_fn=None, data_type=None):
     """
     Given a 2-dimensional np array and a template raster,
     write the array out to a georeferenced raster in the same style as the template.
@@ -122,12 +290,7 @@ def array2raster(array, template_rast_fn, out_fn=None, no_data_val=None, data_ty
         out_fn, template_ds.RasterXSize, template_ds.RasterYSize, 1, data_type
     )
     out_band = out_ds.GetRasterBand(1)
-
-    if no_data_val:
-        no_data_val = template_ds.GetRasterBand(1).GetNoDataValue()
-    if no_data_val:
-        out_band.SetNoDataValue(no_data_val)
-    
+    out_band.SetNoDataValue(NODATA)
     out_band.WriteArray(array, 0, 0)
     
     # georeference image
@@ -136,38 +299,40 @@ def array2raster(array, template_rast_fn, out_fn=None, no_data_val=None, data_ty
 
     return out_fn
 
-def serialize_rast(rast_fn, extra_data={}):
+def data2raster(data, template_fn, out_fn='/tmp/rast.tif'):
     """
-    Given a georeferenced raster filename,
-    and optionally a dictionary of extra data to include in each output,
-    returns an iterator that generates lines in the format:
-        "<pt_wkt>", {'val':<val>, <extra_key1>:<extra_val1>, ...}
+    Given an iterable (list) in the format:
+        {'pix_ctr_wkt': wkt, 'value': val}
+    And a tif to use as a template,
+    Create a new tif where the values are
+    filled in to the raster.
+    
+    Returns the new filename
+    
+    Note: NODATA value hardcoded as -99
     """
-    gdal.UseExceptions() # enable exception-throwing by GDAL
+    template_ds = gdal.Open(template_fn)
 
-    ds = gdal.Open(rast_fn)
-    num_pix_wide, num_pix_high = ds.RasterXSize, ds.RasterYSize
-    top_left_x, pix_width, x_rot, top_left_y, y_rot, pix_height = ds.GetGeoTransform()
+    # initialize array to all NODATA
+    holder = np.ones_like(ds2array(template_ds)) * NODATA
     
-    band = ds.GetRasterBand(1)
-    pixvals = band.ReadAsArray(0, 0, num_pix_wide, num_pix_high)
-    
-    for xoff in xrange(num_pix_wide):
-        x = top_left_x + (xoff + 0.5) * pix_width # +0.5 to get center x
-        for yoff in xrange(num_pix_high):
-            y = top_left_y + (yoff + 0.5) * pix_height # +0.5 to get center y
-            val = pixvals[yoff, xoff] # careful!  math matrix uses yoff, xoff
-            pt_wkt = 'POINT(%s %s)' % (x, y)
-            pt_data = {'val': float(val)}
-            pt_data.update(extra_data)
-            yield pt_wkt, pt_data
+    for d in data:
+        clean = d['pix_ctr_wkt'].replace('POINT(', '').replace(')', '').strip()
+        lng, lat = clean.split(' ')
+        val = float(d['value'])
+        
+        # figure out where the pixel goes
+        x_off, y_off = get_pix_offsets_for_point(template_ds, lng, lat)
+        holder[y_off, x_off] = val  # careful!  matrix uses y, x notation
+   
+    return array2raster(holder, template_fn, out_fn)
+
 
 ##################
 # Raster algebra
 ##################
-import numpy as np  # referenced in eval code
-
-def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/rast_algebra.tif'):
+# numpy referenced in eval code
+def rast_algebra(rast_fn, eqn, mask_eqn=None, out_fn='/tmp/rast_algebra.tif'):
     """
     Given a raster file, 
     a string equation in the format: TODO,
@@ -178,8 +343,6 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/ras
     gdal.UseExceptions() # enable exception-throwing by GDAL
     
     ds = gdal.Open(rast_fn)
-    if not no_data_val:
-        no_data_val = ds.GetRasterBand(1).GetNoDataValue()
 
     eqn_bands = parse_eqn_bands(eqn)
     mask_bands = parse_eqn_bands(mask_eqn or '')
@@ -199,6 +362,7 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, no_data_val=None, out_fn='/tmp/ras
 
     if mask_eqn:
         mod_mask_eqn = multiple_replace(mask_eqn, band_replace)
+        no_data_val = NODATA  # referenced in modified equation below
         data = eval(
             'np.choose(%s, (no_data_val, %s)))' % (mod_mask_eqn, mod_eqn)
         )
