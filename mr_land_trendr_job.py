@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 
 from mrjob.job import MRJob
@@ -10,13 +11,9 @@ import classes
 
 class MRLandTrendrJob(MRJob):
     def __init__(self, *args, **kwargs):
-        lt_job = kwargs.pop('lt_job', None)
-        if not lt_job:
-            raise Exception('lt_job is a required input')
         extra_job_runner_kwargs = kwargs.pop('job_runner_kwargs', {})
         extra_emr_job_runner_kwargs = kwargs.pop('emr_job_runner_kwargs', {})
         super(MRLandTrendrJob, self).__init__(*args, **kwargs)
-        self.lt_job = lt_job
         self.extra_job_runner_kwargs = extra_job_runner_kwargs
         self.extra_emr_job_runner_kwargs = extra_emr_job_runner_kwargs
 
@@ -28,9 +25,14 @@ class MRLandTrendrJob(MRJob):
 
         Outputs a list of the S3 keys for each of the input rasters
         """
-        rast_keys = utils.get_keys(s.IN_RASTS)
-        for i, k in enumerate(rast_keys):
-            yield i, k.key
+        job = os.environ.get('LT_JOB')
+        print 'Setting up %s' % job
+        rast_keys = utils.get_keys(s.IN_RASTS % job)
+        num_rasts = 0
+        for k in rast_keys:
+            num_rasts += 1
+            yield num_rasts, k.key
+        print '%s rasters in job %s' % (num_rasts, job)
 
     def parse_mapper(self, _, rast_s3key):
         """
@@ -40,15 +42,22 @@ class MRLandTrendrJob(MRJob):
             point_wkt, {'val': <val>, 'date': <date>}
         (where the point_wkt is the centroid of the pixel)
         """
-        rast_zip_fn = utils.get_file(rast_s3key)
-        rast_fn = utils.decompress(rast_zip_fn)[0]  # TODO to a named dir
+        job = os.environ.get('LT_JOB')
 
-        index_eqn = utils.get_settings(self.lt_job)['index_eqn']
+        print 'Downloading %s' % rast_s3key
+        rast_zip_fn = utils.get_file(rast_s3key)
+        decompress_dir = os.path.join(
+            s.WORK_DIR,
+            os.path.basename(rast_zip_fn).replace('.tif.tar.gz', '')
+        )
+        rast_fn = utils.decompress(rast_zip_fn, decompress_dir)[0]
+
+        print 'Calculating index on %s' % rast_fn
+        index_eqn = utils.get_settings(job)['index_eqn']
         index_rast = utils.rast_algebra(rast_fn, index_eqn)
 
-        shutil.rmtree(os.path.dirname(rast_fn))  # TODO this is scary
-
         datestring = utils.filename2date(rast_fn)
+        print 'Serializing raster %s' % rast_fn
         pix_generator = utils.serialize_rast(index_rast, {'date': datestring})
         for point_wkt, pix_data in pix_generator:
             yield point_wkt, pix_data
@@ -66,8 +75,15 @@ class MRLandTrendrJob(MRJob):
         Return the point_wkt and a dictionary of "change labels" that match
         the generated trendline.
         """
-        settings = utils.get_settings(self.lt_job)
-        pix_trendline = list(utils.analyze(pix_datas, settings['line_cost']))
+        sys.stdout.write('.')  # for viewing progress
+        sys.stdout.flush()
+
+
+        job = os.environ.get('LT_JOB')
+        settings = utils.get_settings(job)
+
+        pix_datas = list(pix_datas)  # save iterator to a list
+        pix_trendline = utils.analyze(pix_datas, settings['line_cost'])
 
         label_rules = [
             classes.LabelRule(lr) for lr in settings['label_rules']
@@ -92,13 +108,14 @@ class MRLandTrendrJob(MRJob):
         names of the generated images
         """
         # download a template raster
-        template_key = utils.get_keys(s.IN_RASTS)[0]
+        job = os.environ.get('LT_JOB')
+        template_key = utils.get_keys(s.IN_RASTS % job)[0]
         template_rast = utils.get_file(template_key)
-        
+
         # name raster so it uploads to correct location
-        rast_key = s.OUT_RAST_KEYNAME % (self.lt_job, label_key)
+        rast_key = s.OUT_RAST_KEYNAME % (job, label_key)
         rast_fn = utils.keyname2filename(rast_key)
-        
+
         # write data to raster
         utils.data2raster(pix_datas, template_rast, out_fn=rast_fn)
         compressed = utils.compress([rast_fn], '%s.zip' % rast_fn)
@@ -109,6 +126,7 @@ class MRLandTrendrJob(MRJob):
 
     def steps(self):
         return [
+            self.mr(mapper=self.setup_mapper),
             self.mr(mapper=self.parse_mapper, reducer=self.analysis_reducer),
             self.mr(mapper=self.label_mapper, reducer=self.mapping_reducer)
         ]

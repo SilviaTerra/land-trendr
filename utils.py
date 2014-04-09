@@ -3,6 +3,7 @@ import settings as s
 ###############################
 # Compression / Decompression
 ###############################
+import glob
 import os
 import shutil
 import tarfile
@@ -21,16 +22,17 @@ def compress(fns, out_fn='/tmp/compressed.zip'):
 def decompress(filename, out_dir='/tmp/decompressed'):
     """
     Given a tar.gz or a zip, extract the contents and return a list of files.
-    The out_dir must not already exist.  It will be created from scratch and
+    If the out_dir already exists, we skip decompression and just return the
+    files inside that dir.  
+    Otherwise it will be created from scratch and
     filled with the files from the compressed file
     """
-    fn = filename #alias
-
     if os.path.exists(out_dir):
-        raise Exception('Output directory already exists')
+        return glob.glob(os.path.join(out_dir, '*'))
     os.makedirs(out_dir)
     del_dir = False
 
+    fn = filename #alias
     try:
         if zipfile.is_zipfile(fn):
             zipfile.ZipFile(fn, 'r').extractall(out_dir)
@@ -177,10 +179,21 @@ def parse_date(date_string):
     except Exception:
         raise ValueError('date_string must be in "YYYY-MM-DD" format')
 
-def filename2date(fn):
+def filename2date(fn):  # TODO talk with Robert about real way to do this
     """
     Given a filename, returns a datestring in the format YYYY-MM-DD
     """
+    if 'pca1' in fn:
+        return '1999-06-01'
+    if 'pca2' in fn:
+        return '2000-06-01'
+    if 'pca3' in fn:
+        return '2001-06-01'
+    if 'pca4' in fn:
+        return '2002-06-01'
+    if 'pca5' in fn:
+        return '2003-06-01'
+    raise Exception('FIX DATE PARSING')
     fn, _ = os.path.splitext(fn)
     scene_id, y, m, d = os.path.basename(fn).split('_')
     return '%s-%s-%s' % (y, m, d)
@@ -669,7 +682,6 @@ def change_labeling(pix_trendline, label_rules):
     """
     labels = {}
     for rule in label_rules:
-        print 'Checking rule %s' % rule.name
         match = pix_trendline.match_rule(rule)
         if match:
             labels[rule.name] = {

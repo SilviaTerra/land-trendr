@@ -28,8 +28,12 @@ def add_bootstrap_cmds():
 
     DEFAULT_EMR_JOB_RUNNER_KWARGS['bootstrap_cmds'] += [
         'echo [Credentials] | sudo tee /etc/boto.cfg',
-        'echo aws_access_key_id = %s | sudo tee -a /etc/boto.cfg' % connection.access_key,
-        'echo aws_secret_access_key = %s | sudo tee -a /etc/boto.cfg' % connection.secret_key
+        'echo aws_access_key_id = %s | sudo tee -a /etc/boto.cfg' % (
+            connection.access_key
+        ),
+        'echo aws_secret_access_key = %s | sudo tee -a /etc/boto.cfg' % (
+            connection.secret_key
+        )
     ]
 
 
@@ -46,29 +50,27 @@ def create_input_file(platform, job):
     # just a dummy value.  All settings pulled from S3
     contents = 'Running-%s' % job
 
-    if platform == 'local':
-        local_input = '/tmp/input.txt'
-        o = open(local_input, 'w')
-        o.write(contents)
-        o.close()
-
-        return local_input
-
     if platform == 'emr':
         connection = boto.connect_s3()
         bucket = connection.get_bucket(s.S3_BUCKET)
         key = bucket.new_key(s.IN_EMR_KEYNAME % job)
         key.set_contents_from_string(contents)
-
         return 's3://%s/%s' % (s.S3_BUCKET, key.key)
+    else:  # local or inline
+        local_input = '/tmp/input.txt'
+        o = open(local_input, 'w')
+        o.write(contents)
+        o.close()
+        return local_input
 
 
 def main(platform, job):
-    args, job_runner_kwargs = [], {}
-    job_runner_kwargs['input_paths'] = [create_input_file(platform, job)]
+    input_file = create_input_file(platform, job)
+    args = ['-r', platform, input_file]
+
+    job_runner_kwargs = {'cmdenv': {'LT_JOB': job}}
 
     if platform == 'emr':
-        args = ['-r', 'emr']
         add_bootstrap_cmds()
         emr_job_runner_kwargs = DEFAULT_EMR_JOB_RUNNER_KWARGS
         bundle_dependencies()
@@ -76,10 +78,9 @@ def main(platform, job):
         emr_job_runner_kwargs = {}
 
     j = MRLandTrendrJob(
-        lt_job=job
         args=args,
         job_runner_kwargs=job_runner_kwargs,
-        emr_job_runner_kwargs=emr_job_runner_kwargs
+        emr_job_runner_kwargs=emr_job_runner_kwargs,
     )
 
     with j.make_runner() as runner:
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run a LandTrendr job')
 
     parser.add_argument('-p', '--platform', required=True,
-                        choices=['local', 'emr'],
+                        choices=['inline', 'local', 'emr'],
                         help='Which platform do you want to run on?')
     parser.add_argument('-j', '--job', required=True,
                         help='Which LandTrendr job do you want to run?')
