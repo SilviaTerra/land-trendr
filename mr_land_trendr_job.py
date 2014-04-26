@@ -61,12 +61,23 @@ class MRLandTrendrJob(MRJob):
         """
         job = os.environ.get('LT_JOB')
 
-        print 'Downloading %s' % rast_s3key
+        print 'Downloading analysis raster: %s' % rast_s3key
         rast_zip_fn = utils.get_file(rast_s3key)
         name = os.path.basename(rast_zip_fn)
         name = name.replace('.tif.tar.gz', '').replace('.zip', '')
         decompress_dir = os.path.join(s.WORK_DIR, name)
         rast_fn = utils.decompress(rast_zip_fn, decompress_dir)[0]
+
+        print 'Downloading mask raster if exists'
+        mask_key = rast_s3key.replace(s.RAST_SUFFIX, s.MASK_SUFFIX)
+        try:
+            mask_zip_fn = utils.get_file(mask_key)
+            m_name = os.path.basename(mask_zip_fn)
+            m_name = m_name.replace('.tif.tar.gz', '').replace('.zip', '')
+            m_dir = os.path.join(s.WORK_DIR, m_name)
+            mask_fn = utils.decompress(mask_zip_fn, m_dir)[0]
+        except Exception:
+            mask_fn = None  # don't worry about mask
 
         print 'Calculating index on %s' % rast_fn
         index_eqn = utils.get_settings(job)['index_eqn']
@@ -80,7 +91,7 @@ class MRLandTrendrJob(MRJob):
 
         print 'Serializing raster %s' % rast_fn
         pix_generator = utils.apply_grid(
-            index_rast, grid_fn, {'date': datestring})
+            index_rast, grid_fn, {'date': datestring}, mask_fn=mask_fn)
 
         for point_wkt, pix_data in pix_generator:
             yield point_wkt, pix_data

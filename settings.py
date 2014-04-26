@@ -9,6 +9,7 @@ if os.environ['LANDTRENDR_TESTING'] == 'True':
 else:
     S3_BUCKET = 'silviaterra-landtrendr'
 
+# TODO clarify that this can be anywhere, not just a suffix
 RAST_SUFFIX = 'ledaps'  # to be used for analysis
 MASK_SUFFIX = 'cloudmask'  # to be used for masking
 
