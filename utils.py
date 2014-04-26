@@ -106,7 +106,6 @@ def get_files(prefix):
     download(to_download)
     return fns
 
-
 def get_file(keyname):
     """
     Gets a single file from S3 and returns the local filename.
@@ -322,7 +321,10 @@ def apply_grid(rast_fn, grid_fn, extra_data={}):
     ds = gdal.Open(rast_fn)
     arr = ds2array(ds)
     for wkt in pd.read_csv(grid_fn)['pix_ctr_wkt']:
-        val = pt2val(ds, wkt, arr)
+        try:
+            val = pt2val(ds, wkt, arr)
+        except Exception:  # swallow exceptions - grid pts off raster
+            continue  # skip this grid pt
         pt_data = {'val': float(val)}
         pt_data.update(extra_data)
         yield wkt, pt_data

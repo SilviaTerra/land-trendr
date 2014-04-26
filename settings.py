@@ -13,4 +13,6 @@ IN_EMR_KEYNAME = '%s/input/emr_input.txt'  # % job
 IN_SETTINGS = '%s/input/settings.json'  # % job
 IN_RASTS = '%s/input/rasters/'  # % job
 
+
+OUT_GRID = '%s/output/pix_grid.csv'  # % job
 OUT_RAST_KEYNAME = '%s/output/rasters/%s.tif'  # % (job, label)
