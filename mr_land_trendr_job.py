@@ -1,6 +1,5 @@
 import os
 import sys
-import shutil
 
 from mrjob.job import MRJob
 

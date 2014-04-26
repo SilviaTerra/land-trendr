@@ -229,7 +229,7 @@ def get_settings(job):
 # Raster Read/Write
 ####################
 import numpy as np  
-from osgeo import gdal
+from osgeo import gdal, ogr
 
 NODATA = -99  # TODO settings
 
@@ -254,6 +254,7 @@ def get_pix_offsets_for_point(ds, lng, lat):
     
     return x_offset, y_offset
 
+
 def ds2array(ds, band=1):
     """
     Given a datasource and optionally a band number, 
@@ -265,6 +266,22 @@ def ds2array(ds, band=1):
             band, ds.RasterCount
         ))
     return ds.GetRasterBand(band).ReadAsArray(0, 0, num_pix_wide, num_pix_high)
+
+
+def pt2val(ds, pt_wkt, raster_array=None):
+    """
+    Given a raster datasource and a point WKT
+    and optionally a pre-filled raster-array (for speed),
+    return the value of the raster at that location
+    """
+    pt = ogr.CreateGeometryFromWkt(pt_wkt)
+    lng, lat = pt.GetX(), pt.GetY()
+    pt.Destroy()
+    x_off, y_off = get_pix_offsets_for_point(ds, lng, lat)
+    if raster_array is None:
+        raster_array = raster_ds_to_array(ds)
+    return raster_array[y_off, x_off]  # careful!  math matrix uses yoff, xoff
+
 
 def serialize_rast(rast_fn, extra_data={}):
     """
@@ -294,6 +311,23 @@ def serialize_rast(rast_fn, extra_data={}):
 
 
 import pandas as pd
+def apply_grid(rast_fn, grid_fn, extra_data={}):
+    """
+    Given a georeferenced raster filename,
+    a "grid" filename (CSV with 'pix_ctr_wkt' column)
+    and optionally a dictionary of extra data to include in each output,
+    returns an iterator that generates lines in the format:
+        "<pt_wkt>", {'val':<val>, <extra_key1>:<extra_val1>, ...}
+    """
+    ds = gdal.Open(rast_fn)
+    arr = ds2array(ds)
+    for wkt in pd.read_csv(grid_fn)['pix_ctr_wkt']:
+        val = pt2val(ds, wkt, arr)
+        pt_data = {'val': float(val)}
+        pt_data.update(extra_data)
+        yield wkt, pt_data
+
+
 def rast2grid(rast_fn, out_csv='/tmp/grid.csv'):
     """
     Given a georeferenced raster, return a CSV with the WKT of pixel

@@ -124,6 +124,13 @@ class RastUtilsTestCase(unittest.TestCase):
         )
         os.remove(alg_fn)
 
+    def test_grid(self):
+        grid = utils.rast2grid(self.template_fn)
+        pix_data = list(utils.apply_grid(self.template_fn, grid, {'x': 'y'}))
+        self.assertEqual(len(pix_data), 2430)
+        os.remove(grid)
+
+
 class AnalysisTestCase(unittest.TestCase):
 
     def spike_helper(self, l1, l2):
