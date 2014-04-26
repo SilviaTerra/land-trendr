@@ -469,6 +469,36 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, out_fn='/tmp/rast_algebra.tif'):
 #############
 import pandas as pd
 
+def pick_winners(dict_list):
+    """
+    Given a list of dicts in the format:
+    [
+        {'date': '2011-09-01', 'val': 160.0},
+        {'date': '2012-09-01', 'val': 160.0},
+        ...
+    ]
+    """
+    """
+    # group by year
+    year_groups = {}
+    for d in dict_list:
+        yr = parse_date(d['date']).year
+        year_groups[yr] = year_groups.get(yr, []) + [d]
+    
+    # for each year, pick median pixel
+    winners = []
+    for yr, ds in year_groups.iteritems():
+        if len(ds) == 1:  # see if we can short-circuit
+            winners.append(ds[0])
+            continue
+        
+        # order by date
+        ordered = sorted(ds, key=lambda x: utils.parse_date(x['date']))
+        # pick median
+        winners.append(ordered[len(ordered)/2])
+
+    return winners
+
 def timeseries2int_series(time_series):
     """
     It's tricky to do math on dates, so instead of having dates 
@@ -685,8 +715,11 @@ def analyze(pix_datas, line_cost):
 
     Returns a Trendline
     """
+    # pick winners
+    winners = pick_winners(pix_datas)
+
     # convert to time series 
-    ts = dicts2timeseries(pix_datas)
+    ts = dicts2timeseries(winners)
     formatted_dates = [d.strftime('%Y-%m-%d') for d in ts.index]
 
     # despike
