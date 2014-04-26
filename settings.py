@@ -9,6 +9,9 @@ if os.environ['LANDTRENDR_TESTING'] == 'True':
 else:
     S3_BUCKET = 'silviaterra-landtrendr'
 
+RAST_SUFFIX = 'ledaps'  # to be used for analysis
+MASK_SUFFIX = 'cloudmask'  # to be used for masking
+
 IN_EMR_KEYNAME = '%s/input/emr_input.txt'  # % job
 IN_SETTINGS = '%s/input/settings.json'  # % job
 IN_RASTS = '%s/input/rasters/'  # % job
