@@ -310,21 +310,35 @@ def serialize_rast(rast_fn, extra_data={}):
 
 
 import pandas as pd
-def apply_grid(rast_fn, grid_fn, extra_data={}):
+def apply_grid(rast_fn, grid_fn, extra_data={}, mask_fn=None):
     """
     Given a georeferenced raster filename,
     a "grid" filename (CSV with 'pix_ctr_wkt' column)
     and optionally a dictionary of extra data to include in each output,
     returns an iterator that generates lines in the format:
         "<pt_wkt>", {'val':<val>, <extra_key1>:<extra_val1>, ...}
+
+    The optional mask_fn input is for a raster mask.  For pixels that have
+    mask==1, this function skips the pixel.
     """
     ds = gdal.Open(rast_fn)
     arr = ds2array(ds)
+    if mask_fn:
+        mask_ds = gdal.Open(mask_fn)
+        mask_arr = ds2array(mask_ds)
+
     for wkt in pd.read_csv(grid_fn)['pix_ctr_wkt']:
         try:
             val = pt2val(ds, wkt, arr)
         except Exception:  # swallow exceptions - grid pts off raster
             continue  # skip this grid pt
+        if mask_fn:
+            try:
+                mask_val = pt2val(mask_ds, wkt, mask_arr)
+                if mask_val == 1:
+                    continue  # skip masked pixel
+            except Exception:
+                pass  # ignore invalid mask
         pt_data = {'val': float(val)}
         pt_data.update(extra_data)
         yield wkt, pt_data
