@@ -319,7 +319,7 @@ def apply_grid(rast_fn, grid_fn, extra_data={}, mask_fn=None):
         "<pt_wkt>", {'val':<val>, <extra_key1>:<extra_val1>, ...}
 
     The optional mask_fn input is for a raster mask.  For pixels that have
-    mask==1, this function skips the pixel.
+    mask==0, this function skips the pixel.
     """
     ds = gdal.Open(rast_fn)
     arr = ds2array(ds)
@@ -335,7 +335,7 @@ def apply_grid(rast_fn, grid_fn, extra_data={}, mask_fn=None):
         if mask_fn:
             try:
                 mask_val = pt2val(mask_ds, wkt, mask_arr)
-                if mask_val == 1:
+                if mask_val == 0:
                     continue  # skip masked pixel
             except Exception:
                 pass  # ignore invalid mask
