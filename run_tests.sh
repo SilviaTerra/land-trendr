@@ -4,6 +4,7 @@ export LANDTRENDR_TESTING=True
 export LT_JOB="test-job"
 nosetests \
 	--with-coverage \
+	--cover-min-percentage=75 \
 	--cover-package=utils \
 	--cover-erase \
 	--cover-html \
