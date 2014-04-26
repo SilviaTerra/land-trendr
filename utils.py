@@ -66,7 +66,6 @@ def keyname2filename(keyname):
         s.WORK_DIR, keyname.replace(os.path.sep, '__')
     )
 
-
 def get_keys(prefix):
     """
     returns the keys of all S3 objects with that prefix
@@ -165,7 +164,7 @@ def upload(filenames, replacements={}):
 #################################
 # String parsing
 #################################
-from datetime import datetime
+from datetime import datetime, timedelta
 import re 
 
 def parse_date(date_string):
@@ -181,23 +180,17 @@ def parse_date(date_string):
 def filename2date(fn):  # TODO talk with Robert about real way to do this
     """
     Given a filename, returns a datestring in the format YYYY-MM-DD
+
+    names look like:
+    LE7045029_1999_211_20120124_104859_cloudmask.tif.tar.gz
+    (211 day of 1999)
     """
-    if 'pca1' in fn:
-        return '1999-06-01'
-    if 'pca2' in fn:
-        return '2000-06-01'
-    if 'pca3' in fn:
-        return '2001-06-01'
-    if 'pca4' in fn:
-        return '2002-06-01'
-    if 'pca5' in fn:
-        return '2003-06-01'
-    if '4529_2012_09_01' in fn:
-        return '2012-09-01'
-    raise Exception('FIX DATE PARSING')
-    fn, _ = os.path.splitext(fn)
-    scene_id, y, m, d = os.path.basename(fn).split('_')
-    return '%s-%s-%s' % (y, m, d)
+    fn = os.path.basename(fn)
+    chunks = fn.split('_')
+    yr, days = int(chunks[1]), int(chunks[2])
+    d = datetime(year=yr, month=1, day=1)
+    d += timedelta(days=days-1)
+    return '%04d-%02d-%02d' % (d.year, d.month, d.day)
 
 def parse_eqn_bands(eqn):
     """
