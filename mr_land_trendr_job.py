@@ -26,17 +26,17 @@ class MRLandTrendrJob(MRJob):
         """
         job = os.environ.get('LT_JOB')
         print 'Setting up %s' % job
-        rast_keys = list(utils.get_keys(s.IN_RASTS % job))
-        if not rast_keys:
-            raise Exception('No rasters specified for job %s' % job)
-        num_rasts = 0
-        for k in rast_keys:
-            num_rasts += 1
-            yield num_rasts, k.key
-        print '%s rasters in job %s' % (num_rasts, job)
+        rast_keys = utils.get_keys(s.IN_RASTS % job)
+        analysis_rasts = []
+        for i, k in enumerate(rast_keys):
+            if s.RAST_SUFFIX in k.key:
+                analysis_rasts.append([i, k.key])
+
+        if not analysis_rasts:
+            raise Exception('No analysis rasters specified for job %s' % job)
 
         # download template rast for grid
-        rast_zip_fn = utils.get_file(rast_keys[0])
+        rast_zip_fn = utils.get_file(analysis_rasts[0][1])
         name = os.path.basename(rast_zip_fn)
         name = name.replace('.tif.tar.gz', '').replace('.zip', '')
         decompress_dir = os.path.join(s.WORK_DIR, name)
@@ -46,6 +46,10 @@ class MRLandTrendrJob(MRJob):
         grid_fn = utils.keyname2filename(s.OUT_GRID % job)
         utils.rast2grid(rast_fn, out_csv=grid_fn)
         utils.upload([grid_fn])
+
+        # note - must yield at end to ensure grid is created
+        for i, keyname in analysis_rasts.iteritems():
+            yield i, keyname
 
     def parse_mapper(self, _, rast_s3key):
         """
