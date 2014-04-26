@@ -42,9 +42,9 @@ In your land-trendr S3 bucket (settings.S3_BUCKET), create the following:
      * name - name of the change label
      * val - what value to use when writing to raster
      * change_type - one of:
-       * FD - first disturbance
-       * GD - greatest disturbance
-       * LD - longest disturbance
+        * FD - first disturbance
+        * GD - greatest disturbance
+        * LD - longest disturbance
      * The following OPTIONAL options all take two-item lists in the format (qualifier, val):
         * onset_year lets us limit the time horizon we analyze. Qualifier options:
           * = - equal to
