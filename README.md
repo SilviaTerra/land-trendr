@@ -28,13 +28,57 @@ If you're getting errors importing gdal/osgeo, try:
     cd $VIRTUAL_ENV/build/gdal
     python setup.py build_ext --library-dirs=/Library/Frameworks/GDAL.framework/Versions/Current/unix/lib --include-dirs=/Library/Frameworks/GDAL.framework/Versions/Current/unix/include install
 
+Setting up a job
+----------------
+In your land-trendr S3 bucket (settings.S3_BUCKET), create the following:
+ * __JOB__/input/rasters/...
+   * .tar.gz or .zip for each raster you want to include in the analysis
+   * names should be in the format: LE7045029_1999_211_20120124_104859_cloudmask_cropped.tif.tar.gz
+ * __JOB__/input/settings.json  -  JSON with the following fields:
+   * index_eqn - what equation to use to calculate a single index from a multi-band image
+     * e.g. "(B1+B2)/(B3-B2)"
+   * line_cost - the cost of adding a line in the segmented least squares algorithm
+   * label_rules - a list of change-labeling rules in the format:
+     * name - name of the change label
+     * val - what value to use when writing to raster
+     * change_type - one of:
+       * FD - first disturbance
+       * GD - greatest disturbance
+       * LD - longest disturbance
+     * The following OPTIONAL options all take two-item lists in the format (qualifier, val):
+        * onset_year lets us limit the time horizon we analyze. Qualifier options:
+          * = - equal to
+          * >= - greater than or equal to
+          * <= - less than or equal to
+        * duration lets us filter by how long a disturbance is. Qualifier options:
+          * > - greater than
+          * < - less than
+        * pre_threshold lets us filter by the pre-disturbance value. Qualifier options:
+          * > - greater than
+          * < - less than
+
+Example settings.json
+---------------------
+    {
+        "index_eqn": "B1",
+        "line_cost": 10,
+        "label_rules": [
+            {
+                "name": "greatest_disturbance",
+                "val": 1,
+                "change_type": "GD"
+            }
+        ]
+    }
+
+
 Running locally
 ---------------
-    python land_trendr.py -p local -i s3://alpha-silviaterra-landtrendr/testing/
+    python land_trendr.py -p local -j __JOB__
 
 Running on EMR
 --------------
-    python land_trendr.py -p emr -i s3://alpha-silviaterra-landtrendr/testing/ -o s3://alpha-silviaterra-landtrendr/testing/output/
+    python land_trendr.py -p emr -j __JOB__
 
 Running tests
 -------------
