@@ -15,7 +15,7 @@ def compress(fns, out_fn='/tmp/compressed.zip'):
     """
     zf = zipfile.ZipFile(out_fn, 'w')
     for fn in fns:
-        zf.write(zf, os.pat.basename(fn), zipfile.ZIP_DEFLATED)
+        zf.write(fn, os.path.basename(fn), zipfile.ZIP_DEFLATED)
     zf.close()
     return out_fn
 
@@ -124,6 +124,17 @@ def get_file(keyname):
     if to_dl:
         download([to_dl])
     return fn
+
+def rast_dl(keyname):
+    """
+    Given the keyname of a compressed raster, download it, decompress,
+    and return the name of the decompressed file
+    """
+    rast_zip_fn = get_file(keyname)
+    name = os.path.basename(rast_zip_fn)
+    name = name.replace('.tif', '').replace('.tar.gz', '').replace('.zip', '')
+    decompress_dir = os.path.join(s.WORK_DIR, name)
+    return decompress(rast_zip_fn, decompress_dir)[0]
 
 def read_json(keyname):
     """
@@ -404,7 +415,7 @@ def data2raster(data, template_fn, out_fn='/tmp/rast.tif'):
     
     for d in data:
         clean = d['pix_ctr_wkt'].replace('POINT(', '').replace(')', '').strip()
-        lng, lat = clean.split(' ')
+        lng, lat = [float(x) for x in clean.split(' ')]
         val = float(d['value'])
         
         # figure out where the pixel goes

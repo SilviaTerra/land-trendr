@@ -26,21 +26,13 @@ class MRLandTrendrJob(MRJob):
         """
         job = os.environ.get('LT_JOB')
         print 'Setting up %s' % job
-        rast_keys = utils.get_keys(s.IN_RASTS % job)
-        analysis_rasts = []
-        for i, k in enumerate(rast_keys):
-            if s.RAST_SUFFIX in k.key:
-                analysis_rasts.append([i, k.key])
-
+        rast_keys = [k.key for k in utils.get_keys(s.IN_RASTS % job)]
+        analysis_rasts = filter(lambda k: s.RAST_SUFFIX in k, rast_keys)
         if not analysis_rasts:
             raise Exception('No analysis rasters specified for job %s' % job)
 
         # download template rast for grid
-        rast_zip_fn = utils.get_file(analysis_rasts[0][1])
-        name = os.path.basename(rast_zip_fn)
-        name = name.replace('.tif.tar.gz', '').replace('.zip', '')
-        decompress_dir = os.path.join(s.WORK_DIR, name)
-        rast_fn = utils.decompress(rast_zip_fn, decompress_dir)[0]
+        rast_fn = utils.rast_dl(analysis_rasts[0])
 
         # set up grid
         grid_fn = utils.keyname2filename(s.OUT_GRID % job)
@@ -48,7 +40,7 @@ class MRLandTrendrJob(MRJob):
         utils.upload([grid_fn])
 
         # note - must yield at end to ensure grid is created
-        for i, keyname in analysis_rasts.iteritems():
+        for i, keyname in enumerate(analysis_rasts):
             yield i, keyname
 
     def parse_mapper(self, _, rast_s3key):
@@ -61,25 +53,15 @@ class MRLandTrendrJob(MRJob):
         """
         job = os.environ.get('LT_JOB')
 
-        print 'Downloading analysis raster: %s' % rast_s3key
-        rast_zip_fn = utils.get_file(rast_s3key)
-        name = os.path.basename(rast_zip_fn)
-        name = name.replace('.tif.tar.gz', '').replace('.zip', '')
-        decompress_dir = os.path.join(s.WORK_DIR, name)
-        rast_fn = utils.decompress(rast_zip_fn, decompress_dir)[0]
+        rast_fn = utils.rast_dl(rast_s3key)
 
-        print 'Downloading mask raster if exists'
         mask_key = rast_s3key.replace(s.RAST_SUFFIX, s.MASK_SUFFIX)
         try:
-            mask_zip_fn = utils.get_file(mask_key)
-            m_name = os.path.basename(mask_zip_fn)
-            m_name = m_name.replace('.tif.tar.gz', '').replace('.zip', '')
-            m_dir = os.path.join(s.WORK_DIR, m_name)
-            mask_fn = utils.decompress(mask_zip_fn, m_dir)[0]
+            mask_fn = utils.rast_dl(mask_key)
         except Exception:
             mask_fn = None  # don't worry about mask
 
-        print 'Calculating index on %s' % rast_fn
+        # calculate index
         index_eqn = utils.get_settings(job)['index_eqn']
         index_rast = utils.rast_algebra(rast_fn, index_eqn)
 
@@ -89,7 +71,7 @@ class MRLandTrendrJob(MRJob):
         # pull down grid
         grid_fn = utils.get_file(s.OUT_GRID % job)
 
-        print 'Serializing raster %s' % rast_fn
+        print 'Serializing %s...' % os.path.basename(rast_fn)
         pix_generator = utils.apply_grid(
             index_rast, grid_fn, {'date': datestring}, mask_fn=mask_fn)
 
@@ -142,20 +124,22 @@ class MRLandTrendrJob(MRJob):
         """
         # download a template raster
         job = os.environ.get('LT_JOB')
-        template_key = utils.get_keys(s.IN_RASTS % job)[0]
-        template_rast = utils.get_file(template_key)
+
+        rast_keys = utils.get_keys(s.IN_RASTS % job)
+        tmplt_key = filter(lambda x: s.RAST_SUFFIX in x.key, rast_keys)[0].key
+        tmplt_rast = utils.rast_dl(tmplt_key)
 
         # name raster so it uploads to correct location
         rast_key = s.OUT_RAST_KEYNAME % (job, label_key)
         rast_fn = utils.keyname2filename(rast_key)
 
         # write data to raster
-        utils.data2raster(pix_datas, template_rast, out_fn=rast_fn)
+        utils.data2raster(pix_datas, tmplt_rast, out_fn=rast_fn)
         compressed = utils.compress([rast_fn], '%s.zip' % rast_fn)
 
         # upload raster
-        rast_key = utils.upload(compressed)[0]
-        yield label_key, [rast_key]
+        rast_key = utils.upload([compressed])[0]
+        yield label_key, [rast_key.key]
 
     def steps(self):
         return [
