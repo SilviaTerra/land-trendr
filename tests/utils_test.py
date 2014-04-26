@@ -38,7 +38,7 @@ class DateTestCase(unittest.TestCase):
         self.assertEquals(utils.parse_date('2012-01-13'), datetime(2012,1,13))
 
     def test_filename2date(self):
-        self.assertEquals(utils.filename2date('/tmp/4529_2012_01_15.txt'), '2012-01-15')
+        self.assertEquals(utils.filename2date('/tmp/4529_2012_222_ledaps.tif'), '2012-08-09')
 
 class ParseEqnTestCase(unittest.TestCase):
 

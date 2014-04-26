@@ -56,6 +56,6 @@ class TrendLineTestCase(unittest.TestCase):
         match = trendline.match_rule(rule)
         self.assertTrue(match is not None)
         self.assertEqual(match.onset_year, 2010)
-        self.assertAlmostEqual(match.initial_val, 10.999178383)
-        self.assertAlmostEqual(match.magnitude, 6.3993420469846)
+        self.assertAlmostEqual(match.initial_val, 10.999999999)
+        self.assertAlmostEqual(match.magnitude, 6.3999999999999)
         self.assertEqual(match.duration, 3)

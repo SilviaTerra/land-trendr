@@ -190,7 +190,7 @@ def filename2date(fn):  # TODO talk with Robert about real way to do this
     yr, days = int(chunks[1]), int(chunks[2])
     d = datetime(year=yr, month=1, day=1)
     d += timedelta(days=days-1)
-    return '%04d-%02d-%02d' % (d.year, d.month, d.day)
+    return d.strftime('%Y-%m-%d')
 
 def parse_eqn_bands(eqn):
     """
@@ -509,8 +509,8 @@ def timeseries2int_series(time_series):
     #]
     #return pd.Series(data=time_series.values, index=days_series)
 
-    yr_0 = parse_date(dates[0]).year
-    years_series = [(parse_date(d).year - yr_0) for d in dates]
+    yr_0 = pd.to_datetime(str(dates[0])).year
+    years_series = [(pd.to_datetime(str(d)).year - yr_0) for d in dates]
     return pd.Series(data=time_series.values, index=years_series)
 
 
