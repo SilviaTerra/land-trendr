@@ -88,3 +88,24 @@ Running tests
 -------------
     ./run_tests.sh
 
+Overall Architecture
+--------------------
+The main flow-control part of this program is located in mr_land_trendr_job.py.
+Note that mapper/reducer in this context refer to the MapReduce paradigm.
+There are 5 major steps:
+ 1. setup_mapper - creates a  grid of points to sample all the rasters by.
+    * input - nothing
+    * output - list of raw rasters analyze
+ 2. parse_mapper - calculates an index for each raster and samples by each point in the grid (masking appropriately)
+    * input - single raster S3 keyname
+    * output - image date and raster value for each sample, keyed on grid point WKT 
+ 3. analysis_reducer - aggregates all values for each point in the grid, calculates trendline and change labels, and outputs the change labels for each point
+    * input - all dates/values for each grid point
+    * output - change labels for each point
+ 4. label_mapper - just bookkeeping, reaggregates by label rather than by grid point WKT
+    * input - change labels keyed by grid point WKT
+    * output - grid points and labels keyed by label type (class_val, onset_year, magnitude, duration)
+ 5. output_reducer - writes output to raster files and uploads to S3
+    * input - all the pixel/label data for a certain label type
+    * output - s3 keyname of uploaded raster
+

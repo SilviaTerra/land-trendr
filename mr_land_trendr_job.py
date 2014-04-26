@@ -135,7 +135,7 @@ class MRLandTrendrJob(MRJob):
                 label_key = '%s_%s' % (label_name, key)
                 yield label_key, {'pix_ctr_wkt': point_wkt, 'value': data[key]}
 
-    def mapping_reducer(self, label_key, pix_datas):
+    def output_reducer(self, label_key, pix_datas):
         """
         fill the data in to a raster image and return the
         names of the generated images
@@ -161,7 +161,7 @@ class MRLandTrendrJob(MRJob):
         return [
             self.mr(mapper=self.setup_mapper),
             self.mr(mapper=self.parse_mapper, reducer=self.analysis_reducer),
-            self.mr(mapper=self.label_mapper, reducer=self.mapping_reducer)
+            self.mr(mapper=self.label_mapper, reducer=self.output_reducer)
         ]
 
     def job_runner_kwargs(self):
