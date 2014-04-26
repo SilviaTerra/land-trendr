@@ -478,7 +478,6 @@ def pick_winners(dict_list):
         ...
     ]
     """
-    """
     # group by year
     year_groups = {}
     for d in dict_list:
@@ -493,7 +492,7 @@ def pick_winners(dict_list):
             continue
         
         # order by date
-        ordered = sorted(ds, key=lambda x: utils.parse_date(x['date']))
+        ordered = sorted(ds, key=lambda x: parse_date(x['date']))
         # pick median
         winners.append(ordered[len(ordered)/2])
 
@@ -501,17 +500,26 @@ def pick_winners(dict_list):
 
 def timeseries2int_series(time_series):
     """
-    It's tricky to do math on dates, so instead of having dates 
+    It's tricky to do math on dates, so instead of having dates
     as the index for a series, start the series at 0 and instead 
     use the number of days since the beginning of the series as the index.
 
     Returns a new series
+
+    NOTE: Robert wanted to do by year rather than by day
     """
     dates = time_series.index.values
-    days_series = [
-        (d - dates[0]).astype('timedelta64[D]').item().days for d in dates
-    ]
-    return pd.Series(data=time_series.values, index=days_series)
+
+    # USING JULIAN DAY 
+    #days_series = [
+    #    (d - dates[0]).astype('timedelta64[D]').item().days for d in dates
+    #]
+    #return pd.Series(data=time_series.values, index=days_series)
+
+    yr_0 = parse_date(dates[0]).year
+    years_series = [(parse_date(d).year - yr_0) for d in dates]
+    return pd.Series(data=time_series.values, index=years_series)
+
 
 def dicts2timeseries(dict_list):
     """
