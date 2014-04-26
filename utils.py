@@ -193,6 +193,8 @@ def filename2date(fn):  # TODO talk with Robert about real way to do this
         return '2002-06-01'
     if 'pca5' in fn:
         return '2003-06-01'
+    if '4529_2012_09_01' in fn:
+        return '2012-09-01'
     raise Exception('FIX DATE PARSING')
     fn, _ = os.path.splitext(fn)
     scene_id, y, m, d = os.path.basename(fn).split('_')
@@ -289,6 +291,18 @@ def serialize_rast(rast_fn, extra_data={}):
             pt_data = {'val': float(val)}
             pt_data.update(extra_data)
             yield pt_wkt, pt_data
+
+
+import pandas as pd
+def rast2grid(rast_fn, out_csv='/tmp/grid.csv'):
+    """
+    Given a georeferenced raster, return a CSV with the WKT of pixel
+    centers on each line.  (Used for making the canonical LandTrendr grid)
+    """
+    wkts = [{'pix_ctr_wkt': wkt} for wkt, data in serialize_rast(rast_fn)]
+    df = pd.DataFrame(wkts)
+    df.to_csv(out_csv, index=False)
+    return out_csv
 
 ### WRITE ###
 

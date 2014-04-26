@@ -1,7 +1,13 @@
+import os
+
 INPUT_FILE = 'input.txt'
 
 WORK_DIR = '/mnt/vol'
-S3_BUCKET = 'silviaterra-landtrendr'
+
+if os.environ['LANDTRENDR_TESTING'] == 'True':
+    S3_BUCKET = 'alpha-silviaterra-landtrendr'
+else:
+    S3_BUCKET = 'silviaterra-landtrendr'
 
 IN_EMR_KEYNAME = '%s/input/emr_input.txt'  # % job
 IN_SETTINGS = '%s/input/settings.json'  # % job

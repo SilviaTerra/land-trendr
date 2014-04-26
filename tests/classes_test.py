@@ -2,14 +2,19 @@ import unittest
 
 from nose.tools import raises
 
-import classes, utils
+import classes
+import utils
 
 
 class LabelRuleTestCase(unittest.TestCase):
 
     def test_create(self):
-        lr = classes.LabelRule('greatest_fast_disturbance', 5, 'GD',
-                               duration=['<', 4])
+        lr = classes.LabelRule({
+            'name': 'greatest_fast_disturbance',
+            'val': 5,
+            'change_type': 'GD',
+            'duration': ['<', 4]
+        })
         self.assertEqual(lr.name, 'greatest_fast_disturbance')
         self.assertEqual(lr.val, 5)
         self.assertEqual(lr.change_type, 'GD')
@@ -17,8 +22,12 @@ class LabelRuleTestCase(unittest.TestCase):
 
     @raises(ValueError)
     def test_invalid_create(self):
-        classes.LabelRule('greatest_fast_disturbance', 5, 'GD',
-                          duration=['<', 4, 'BAD'])
+        classes.LabelRule({
+            'name': 'greatest_fast_disturbance',
+            'val': 5,
+            'change_type': 'GD',
+            'duration': ['<', 4, 'BAD']
+        })
 
 
 class TrendLineTestCase(unittest.TestCase):
@@ -37,7 +46,12 @@ class TrendLineTestCase(unittest.TestCase):
             {'date': '2018-12-31', 'val': 10},
             {'date': '2019-12-31', 'val': 10}
         ]
-        rule = classes.LabelRule('fast_dist', 2, 'GD', duration=['<', 4])
+        rule = classes.LabelRule({
+            'name': 'fast_dist',
+            'val': 2,
+            'change_type': 'GD',
+            'duration': ['<', 4]
+        })
         trendline = utils.analyze(values, line_cost)
         match = trendline.match_rule(rule)
         self.assertTrue(match is not None)

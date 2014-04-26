@@ -46,10 +46,9 @@ class MRLandTrendrJob(MRJob):
 
         print 'Downloading %s' % rast_s3key
         rast_zip_fn = utils.get_file(rast_s3key)
-        decompress_dir = os.path.join(
-            s.WORK_DIR,
-            os.path.basename(rast_zip_fn).replace('.tif.tar.gz', '')
-        )
+        name = os.path.basename(rast_zip_fn)
+        name = name.replace('.tif.tar.gz', '').replace('.zip', '')
+        decompress_dir = os.path.join(s.WORK_DIR, name)
         rast_fn = utils.decompress(rast_zip_fn, decompress_dir)[0]
 
         print 'Calculating index on %s' % rast_fn
