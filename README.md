@@ -34,6 +34,10 @@ In your land-trendr S3 bucket (settings.S3_BUCKET), create the following:
  * __JOB__/input/rasters/...
    * .tar.gz or .zip for each raster you want to include in the analysis
    * names should be in the format: LE7045029_1999_211_20120124_104859_cloudmask_cropped.tif.tar.gz
+   * make sure your filenames include the appropriate suffix
+      * see RAST_SUFFIX and MASK_SUFFIX in settings
+      * note that mask files are optional
+      * note that this isn't really a suffix, it just has to appear somewhere in the filename
  * __JOB__/input/settings.json  -  JSON with the following fields:
    * index_eqn - what equation to use to calculate a single index from a multi-band image
      * e.g. "(B1+B2)/(B3-B2)"
