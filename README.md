@@ -109,3 +109,22 @@ There are 5 major steps:
     * input - all the pixel/label data for a certain label type
     * output - s3 keyname of uploaded raster
 
+How the analysis works
+----------------------
+The main analysis flow-control function is utils.analyze.  
+It computes a trendline and is comprised of the following steps:
+ 1. For each year, pick a winning pixel
+    * Chooses the median pixel if multiple exist
+ 2. Convert the list into a time series (for analysis with pandas)
+ 3. Despike the series
+ 4. Perform the segmented-least-squares algorithm to identify vertices
+ 5. Given vertices, determine the equation of the least-squares line at each point
+ 6. Calculate the fitted value for each point
+ 7. Returns a classes.Trendline object
+
+How the change labeling works
+-----------------------------
+You can specify multiple change labeling rules in the settings.json file.
+Each label is checked against the Trendline object to see if it matches.
+See the Trendline.parse_disturbances and Trendline.match_rule functions for
+specifics of the implementation.
