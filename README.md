@@ -15,6 +15,11 @@ http://boto.readthedocs.org/en/latest/boto_config_tut.html
     mkvirtualenv land-trendr
     pip install -r requirements.txt
 
+If you're having trouble installing pip/virtualenv on OSX, check [here](http://jamie.curle.io/blog/installing-pip-virtualenv-and-virtualenvwrapper-on-os-x/)
+
+Problems installing numpy/pandas on OSX?  Check [here](http://stackoverflow.com/questions/22388519/problems-with-pip-install-numpy-runtimeerror-broken-toolchain-cannot-link-a)
+  * More details [here](http://kaspermunck.github.io/2014/03/fixing-clang-error/)
+
 If you're getting errors importing gdal/osgeo, try:
 
     # Ubuntu
