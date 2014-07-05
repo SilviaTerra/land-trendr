@@ -491,16 +491,23 @@ def pick_winners(dict_list):
     # for each year, pick median pixel
     winners = []
     for yr, ds in year_groups.iteritems():
-        if len(ds) == 1:  # see if we can short-circuit
-            winners.append(ds[0])
-            continue
-        
         # order by date
         ordered = sorted(ds, key=lambda x: parse_date(x['date']))
         # pick median
         winners.append(ordered[len(ordered)/2])
 
     return winners
+
+def dicts2timeseries(dict_list):
+    """
+    Given a list of dicts in the format:
+        [{'date': '2011-09-01', 'val': 160.0}, {'date': '2012-09-01', 'val': 160.0}]
+    Put them into a sorted time series and return
+    """
+    dates = [parse_date(x['date']) for x in dict_list]
+    vals = [x['val'] for x in dict_list]
+    series = pd.Series(data=vals, index=dates)
+    return series.sort_index()
 
 def timeseries2int_series(time_series):
     """
@@ -523,18 +530,6 @@ def timeseries2int_series(time_series):
     yr_0 = pd.to_datetime(str(dates[0])).year
     years_series = [(pd.to_datetime(str(d)).year - yr_0) for d in dates]
     return pd.Series(data=time_series.values, index=years_series)
-
-
-def dicts2timeseries(dict_list):
-    """
-    Given a list of dicts in the format:
-        [{'date': '2011-09-01', 'val': 160.0}, {'date': '2012-09-01', 'val': 160.0}]
-    Put them into a sorted time series and return
-    """
-    dates = [parse_date(x['date']) for x in dict_list]
-    vals = [x['val'] for x in dict_list]
-    series = pd.Series(data=vals, index=dates)
-    return series.sort_index()
 
 def despike(time_series):
     """
