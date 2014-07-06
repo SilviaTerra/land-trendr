@@ -100,7 +100,11 @@ class MRLandTrendrJob(MRJob):
         settings = utils.get_settings(job)
 
         pix_datas = list(pix_datas)  # save iterator to a list
-        pix_trendline = utils.analyze(pix_datas, settings['line_cost'])
+        pix_trendline = utils.analyze(
+            pix_datas,
+            settings['line_cost'],
+            utils.parse_date(settings['target_date'])
+        )
 
         # write out pix trendline
         for label, val in pix_trendline.mr_label_output().iteritems():

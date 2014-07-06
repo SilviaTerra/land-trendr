@@ -477,14 +477,16 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, out_fn='/tmp/rast_algebra.tif'):
 #############
 import pandas as pd
 
-def pick_winners(dict_list):
+def pick_winners(dict_list, target_date):
     """
     Given a list of dicts in the format:
     [
         {'date': '2011-09-01', 'val': 160.0},
         {'date': '2012-09-01', 'val': 160.0},
         ...
-    ]
+    ],
+    and a target date (year doesn't matter)
+    for each year, pick the dict closest to the target month/day
     """
     # group by year
     year_groups = {}
@@ -495,10 +497,15 @@ def pick_winners(dict_list):
     # for each year, pick median pixel
     winners = []
     for yr, ds in year_groups.iteritems():
+        target = datetime(
+            year=yr, month=target_date.month, day=target_date.day
+        )
         # order by date
-        ordered = sorted(ds, key=lambda x: parse_date(x['date']))
-        # pick median
-        winners.append(ordered[len(ordered)/2])
+        ordered = sorted(
+            ds, key=lambda x: abs((target - parse_date(x['date'])).days)
+        )
+        # pick closest
+        winners.append(ordered[0])
 
     return winners
 
@@ -714,7 +721,7 @@ def get_idx(array_like, idx):
         return array_like[idx]
 
 from classes import Trendline, TrendlinePoint
-def analyze(pix_datas, line_cost):
+def analyze(pix_datas, line_cost, target_date):
     """
     Given data in the format:
     [
@@ -727,7 +734,7 @@ def analyze(pix_datas, line_cost):
     Returns a Trendline
     """
     # pick winners
-    winners = pick_winners(pix_datas)
+    winners = pick_winners(pix_datas, target_date)
 
     # convert to time series 
     ts = dicts2timeseries(winners)
