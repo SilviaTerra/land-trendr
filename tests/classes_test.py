@@ -34,6 +34,7 @@ class TrendLineTestCase(unittest.TestCase):
 
     def test_match(self):
         line_cost = 2
+        target_date = utils.parse_date('2014-07-01')
         values = [
             {'date': '2010-12-31', 'val': 10},
             {'date': '2011-12-31', 'val': 10},
@@ -52,7 +53,7 @@ class TrendLineTestCase(unittest.TestCase):
             'change_type': 'GD',
             'duration': ['<', 4]
         })
-        trendline = utils.analyze(values, line_cost)
+        trendline = utils.analyze(values, line_cost, target_date)
         match = trendline.match_rule(rule)
         self.assertTrue(match is not None)
         self.assertEqual(match.onset_year, 2010)
