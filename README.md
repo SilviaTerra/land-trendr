@@ -47,6 +47,9 @@ In your land-trendr S3 bucket (settings.S3_BUCKET), create the following:
    * index_eqn - what equation to use to calculate a single index from a multi-band image
      * e.g. "(B1+B2)/(B3-B2)"
    * line_cost - the cost of adding a line in the segmented least squares algorithm
+   * target_date - when choosing between multiple images in a year, the target_date
+        is used to pick the closest image.  The year is automatically changed for each set of images.
+        Format: YYYY-MM-DD
    * label_rules - a list of change-labeling rules in the format:
      * name - name of the change label
      * val - what value to use when writing to raster
@@ -69,8 +72,9 @@ In your land-trendr S3 bucket (settings.S3_BUCKET), create the following:
 Example settings.json
 ---------------------
     {
-        "index_eqn": "B1",
+        "index_eqn": "B1 - B2",
         "line_cost": 10,
+        "target_date": "2014-07-01",
         "label_rules": [
             {
                 "name": "greatest_disturbance",
@@ -80,6 +84,14 @@ Example settings.json
         ]
     }
 
+Output
+------
+The output is uploaded in internally compressed (LZW) tif files to the
+    __job__/output/rasters/
+folder.  For each change label, there is a class, duration, magnitude, and onset_year tif.
+
+There is also a "trendline" folder that has an exhaustive set of the trendline
+variables for each year.
 
 Running locally
 ---------------
