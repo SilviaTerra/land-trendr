@@ -4,7 +4,7 @@ INPUT_FILE = 'input.txt'
 
 WORK_DIR = '/mnt/vol'
 
-if os.environ['LANDTRENDR_TESTING'] == 'True':
+if os.environ.get('LANDTRENDR_TESTING') == 'True':
     S3_BUCKET = 'alpha-silviaterra-landtrendr'
 else:
     S3_BUCKET = 'silviaterra-landtrendr'

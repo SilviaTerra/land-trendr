@@ -81,6 +81,40 @@ class TrendlinePoint:
         self.spike = spike
         self.vertex = vertex
 
+    def mr_label_output(self):
+        """
+        Returns a dictionary in the format
+        {
+            '<date>_<attr>': <val>,
+            ...
+        }
+
+        e.g.
+        {
+            '2014-07-05_spike': True,
+            ...
+        }
+
+        coerces booleans to False = 0, True = 1
+        """
+        d = {
+            'val_raw': self.val_raw,
+            'val_fit': self.val_fit,
+            'eqn_fit_slope': self.eqn_fit[0],
+            'eqn_fit_intercept': self.eqn_fit[1],
+            'eqn_right_slope': self.eqn_right[0],
+            'eqn_right_intercept': self.eqn_right[1],
+            'spike': 1 if self.spike else 0,
+            'vertex': 1 if self.vertex else 0
+        }
+
+        # prefix all keys by date
+        date = self.index_date
+        return dict([
+            ('%s-%s' % (date, k), v)
+            for k, v in d.iteritems()
+        ])
+
 
 class Trendline:
     """
@@ -97,6 +131,27 @@ class Trendline:
 
     def __str__(self):
         return unicode(self).encode('utf-8')
+
+    def mr_label_output(self):
+        """
+        Outputs a dictionary in the format:
+        {
+            '<date>_<attr>': <val>,
+            ...
+        }
+
+        e.g.
+        {
+            '2014-07-05_spike': True,
+            ...
+        }
+
+        for all points
+        """
+        out = {}
+        for p in self.points:
+            out.update(p.mr_label_output())
+        return out
 
     def parse_disturbances(self):
         """

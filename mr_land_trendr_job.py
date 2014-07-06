@@ -90,6 +90,8 @@ class MRLandTrendrJob(MRJob):
 
         Return the point_wkt and a dictionary of "change labels" that match
         the generated trendline.
+
+# TODO update
         """
         sys.stdout.write('.')  # for viewing progress
         sys.stdout.flush()
@@ -100,18 +102,21 @@ class MRLandTrendrJob(MRJob):
         pix_datas = list(pix_datas)  # save iterator to a list
         pix_trendline = utils.analyze(pix_datas, settings['line_cost'])
 
+        # write out pix trendline
+        for label, val in pix_trendline.mr_label_output().iteritems():
+            # prepend 'aux/' to label name so written to sub folder
+            yield (
+                'trendline/%s' % label,
+                {'pix_ctr_wkt': point_wkt, 'value': val}
+            )
+
         label_rules = [
             classes.LabelRule(lr) for lr in settings['label_rules']
         ]
 
         change_labels = utils.change_labeling(pix_trendline, label_rules)
-        yield point_wkt, change_labels
 
-    def label_mapper(self, point_wkt, change_labels):
-        """
-        Given all the change labels and metadata for a particular pixel,
-        Split all the pixels by label and type (e.g. onset_year)
-        """
+        # write out change labels
         for label_name, data in change_labels.iteritems():
             for key in ['class_val', 'onset_year', 'magnitude', 'duration']:
                 label_key = '%s_%s' % (label_name, key)
@@ -145,7 +150,7 @@ class MRLandTrendrJob(MRJob):
         return [
             self.mr(mapper=self.setup_mapper),
             self.mr(mapper=self.parse_mapper, reducer=self.analysis_reducer),
-            self.mr(mapper=self.label_mapper, reducer=self.output_reducer)
+            self.mr(reducer=self.output_reducer)
         ]
 
     def job_runner_kwargs(self):
