@@ -201,7 +201,7 @@ def parse_date(date_string):
     except Exception:
         raise ValueError('date_string must be in "YYYY-MM-DD" format')
 
-def filename2date(fn):  # TODO talk with Robert about real way to do this
+def filename2date(fn):
     """
     Given a filename, returns a datestring in the format YYYY-MM-DD
 
@@ -246,8 +246,6 @@ def get_settings(job):
 ####################
 import numpy as np  
 from osgeo import gdal, ogr
-
-NODATA = -99  # TODO settings
 
 ### READ ###
 
@@ -404,7 +402,7 @@ def array2raster(array, template_rast_fn, out_fn=None, data_type=None,
         options
     )
     out_band = out_ds.GetRasterBand(1)
-    out_band.SetNoDataValue(NODATA)
+    out_band.SetNoDataValue(s.NODATA)
     out_band.WriteArray(array, 0, 0)
     
     # georeference image
@@ -428,7 +426,7 @@ def data2raster(data, template_fn, out_fn='/tmp/rast.tif', compress=True):
     template_ds = gdal.Open(template_fn)
 
     # initialize array to all NODATA
-    holder = np.ones_like(ds2array(template_ds)) * NODATA
+    holder = np.ones_like(ds2array(template_ds)) * s.NODATA
     
     for d in data:
         clean = d['pix_ctr_wkt'].replace('POINT(', '').replace(')', '').strip()
@@ -449,7 +447,7 @@ def data2raster(data, template_fn, out_fn='/tmp/rast.tif', compress=True):
 def rast_algebra(rast_fn, eqn, mask_eqn=None, out_fn='/tmp/rast_algebra.tif'):
     """
     Given a raster file, 
-    a string equation in the format: TODO,
+    a string equation
     and an optional output file name,
 
     create a new raster with the equation applied to it
@@ -476,7 +474,7 @@ def rast_algebra(rast_fn, eqn, mask_eqn=None, out_fn='/tmp/rast_algebra.tif'):
 
     if mask_eqn:
         mod_mask_eqn = multiple_replace(mask_eqn, band_replace)
-        no_data_val = NODATA  # referenced in modified equation below
+        no_data_val = s.NODATA  # referenced in modified equation below
         data = eval(
             'np.choose(%s, (no_data_val, %s)))' % (mod_mask_eqn, mod_eqn)
         )

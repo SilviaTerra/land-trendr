@@ -26,8 +26,10 @@ class MRLandTrendrJob(MRJob):
         """
         job = os.environ.get('LT_JOB')
         print 'Setting up %s' % job
-        rast_keys = [k.key for k in utils.get_keys(s.IN_RASTS % job)]
-        analysis_rasts = filter(lambda k: s.RAST_SUFFIX in k, rast_keys)
+        analysis_rasts = [
+            k.key for k in utils.get_keys(s.IN_RASTS % job)
+            if s.RAST_TRIGGER in k.key
+        ]
         if not analysis_rasts:
             raise Exception('No analysis rasters specified for job %s' % job)
 
@@ -55,7 +57,7 @@ class MRLandTrendrJob(MRJob):
 
         rast_fn = utils.rast_dl(rast_s3key)
 
-        mask_key = rast_s3key.replace(s.RAST_SUFFIX, s.MASK_SUFFIX)
+        mask_key = rast_s3key.replace(s.RAST_TRIGGER, s.MASK_TRIGGER)
         try:
             mask_fn = utils.rast_dl(mask_key)
         except Exception:
@@ -88,10 +90,7 @@ class MRLandTrendrJob(MRJob):
         ]
         perform the landtrendr analysis and change labeling.
 
-        Return the point_wkt and a dictionary of "change labels" that match
-        the generated trendline.
-
-# TODO update
+        Yields out the change labels and trendline data for the given point
         """
         sys.stdout.write('.')  # for viewing progress
         sys.stdout.flush()
@@ -135,7 +134,10 @@ class MRLandTrendrJob(MRJob):
         job = os.environ.get('LT_JOB')
 
         rast_keys = utils.get_keys(s.IN_RASTS % job)
-        tmplt_key = filter(lambda x: s.RAST_SUFFIX in x.key, rast_keys)[0].key
+        tmplt_key = [
+            k.key for k in rast_keys
+            if s.RAST_TRIGGER in k.key
+        ][0].key
         tmplt_rast = utils.rast_dl(tmplt_key)
 
         # name raster so it uploads to correct location

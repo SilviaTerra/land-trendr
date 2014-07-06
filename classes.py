@@ -58,7 +58,7 @@ class LabelRule:
                     raise ValueError('Parameter %s - invalid value: %s' % (
                         param_name, param_val
                     ))
-                else:  # TODO more checking for valid codes
+                else:
                     setattr(self, param_name, param_val)
             else:
                 setattr(self, param_name, None)
@@ -170,7 +170,7 @@ class Trendline:
             yield Disturbance(
                 start_yr,
                 left_vertex.val_fit,
-                left_vertex.val_fit - p.val_fit,  # TODO %?
+                left_vertex.val_fit - p.val_fit,
                 end_yr - start_yr
             )
             left_vertex = p

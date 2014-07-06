@@ -9,9 +9,11 @@ if os.environ.get('LANDTRENDR_TESTING') == 'True':
 else:
     S3_BUCKET = 'silviaterra-landtrendr'
 
-# TODO clarify that this can be anywhere, not just a suffix
-RAST_SUFFIX = 'ledaps'  # to be used for analysis
-MASK_SUFFIX = 'cloudmask'  # to be used for masking
+# if these strings appear in filename, classify as raster or mask
+RAST_TRIGGER = 'ledaps'  # to be used for analysis
+MASK_TRIGGER = 'cloudmask'  # to be used for masking
+
+NODATA = -99  # nodata value for rasters
 
 IN_EMR_KEYNAME = '%s/input/emr_input.txt'  # % job
 IN_SETTINGS = '%s/input/settings.json'  # % job

@@ -230,9 +230,6 @@ class AnalysisTestCase(unittest.TestCase):
 
 
     def assertAnalyzeEqual(self, line_cost, values, expected_out):
-
-        # TODO - handle TrendLine
-
         for actual, expected in zip(list(utils.analyze(values, line_cost)), expected_out):
             self.assertEqual(sorted(actual.keys()), sorted(expected.keys()))
 
