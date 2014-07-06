@@ -140,10 +140,9 @@ class MRLandTrendrJob(MRJob):
 
         # write data to raster
         utils.data2raster(pix_datas, tmplt_rast, out_fn=rast_fn)
-        compressed = utils.compress([rast_fn], '%s.zip' % rast_fn)
 
         # upload raster
-        rast_key = utils.upload([compressed])[0]
+        rast_key = utils.upload([rast_fn])[0]
         yield label_key, [rast_key.key]
 
     def steps(self):

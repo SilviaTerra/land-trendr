@@ -360,7 +360,8 @@ def rast2grid(rast_fn, out_csv='/tmp/grid.csv'):
 
 ### WRITE ###
 
-def array2raster(array, template_rast_fn, out_fn=None, data_type=None):
+def array2raster(array, template_rast_fn, out_fn=None, data_type=None,
+                 compress=True):
     """
     Given a 2-dimensional np array and a template raster,
     write the array out to a georeferenced raster in the same style as the template.
@@ -370,6 +371,8 @@ def array2raster(array, template_rast_fn, out_fn=None, data_type=None):
     """
     if not out_fn:
         out_fn = os.path.join('/tmp', 'output_%s' % os.path.basename(template_rast_fn))
+
+    options = ['COMPRESS=LZW'] if compress else []
 
     template_ds = gdal.Open(template_rast_fn)
     ds_shape = (template_ds.RasterYSize, template_ds.RasterXSize)
@@ -384,7 +387,8 @@ def array2raster(array, template_rast_fn, out_fn=None, data_type=None):
 
     driver = template_ds.GetDriver()
     out_ds = driver.Create(
-        out_fn, template_ds.RasterXSize, template_ds.RasterYSize, 1, data_type
+        out_fn, template_ds.RasterXSize, template_ds.RasterYSize, 1, data_type,
+        options
     )
     out_band = out_ds.GetRasterBand(1)
     out_band.SetNoDataValue(NODATA)
@@ -396,7 +400,7 @@ def array2raster(array, template_rast_fn, out_fn=None, data_type=None):
 
     return out_fn
 
-def data2raster(data, template_fn, out_fn='/tmp/rast.tif'):
+def data2raster(data, template_fn, out_fn='/tmp/rast.tif', compress=True):
     """
     Given an iterable (list) in the format:
         {'pix_ctr_wkt': wkt, 'value': val}
@@ -422,7 +426,7 @@ def data2raster(data, template_fn, out_fn='/tmp/rast.tif'):
         x_off, y_off = get_pix_offsets_for_point(template_ds, lng, lat)
         holder[y_off, x_off] = val  # careful!  matrix uses y, x notation
    
-    return array2raster(holder, template_fn, out_fn)
+    return array2raster(holder, template_fn, out_fn, compress)
 
 
 ##################
