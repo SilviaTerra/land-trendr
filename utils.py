@@ -136,15 +136,28 @@ def rast_dl(keyname):
     decompress_dir = os.path.join(s.WORK_DIR, name)
     return decompress(rast_zip_fn, decompress_dir)[0]
 
-def read_json(keyname):
+def read_json(keyname, cache=True):
     """
     Read a JSON file from S3 and return the python object
+
+    Optionally caches the file locally for faster access in future
     """
+    if cache:
+        fn = keyname2filename(keyname)
+        if os.path.exists(fn):
+            with open(fn) as f:
+                return json.load(f)
+    
     keys = list(get_keys(keyname))
     num_keys = len(keys)
     if num_keys == 1:
         key = keys[0]
-        return json.loads(key.get_contents_as_string())
+        if cache:
+            fn = get_file(key.key)
+            with open(fn) as f:
+                return json.load(f)
+        else:
+            return json.loads(key.get_contents_as_string())
     elif num_keys == 0:
         raise Exception('File with key %s does not exist' % keyname)
     else:
