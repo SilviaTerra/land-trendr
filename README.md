@@ -1,3 +1,26 @@
+#
+#
+#
+#
+***
+
+# DEAD REPOSITORY - DO NOT USE
+
+***
+#
+#
+#
+#
+
+
+
+
+
+
+
+
+
+
 land-trendr
 ===========
 Mapreduce implementation of Dr. Robert Kennedy's LandTrendr change detection system
